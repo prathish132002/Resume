@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Upload, Wand2, Layout, FileText, User, LogOut, Clock, Trash2, Edit, FileSignature } from 'lucide-react';
 import { Resume, UserProfile } from '../types';
-import { storageService } from '../services/storageService';
+import { supabaseService } from '../services/supabaseService';
+import { supabase } from '../services/supabaseClient';
 import { Button } from './ui/Button';
 import { Logo } from './Logo';
 
@@ -27,19 +28,39 @@ const Dashboard: React.FC<DashboardProps> = ({
   onCoverLetter
 }) => {
   const [savedResumes, setSavedResumes] = useState<Resume[]>([]);
-  const [user, setUser] = useState<UserProfile | null>(null);
+  const [userEmail, setUserEmail] = useState<string>('');
   const [showMenu, setShowMenu] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setSavedResumes(storageService.getResumes());
-    setUser(storageService.getCurrentUser());
+    const loadData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setUserEmail(user.email || '');
+          const resumes = await supabaseService.fetchResumes();
+          setSavedResumes(resumes);
+        }
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
   }, []);
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (confirm('Are you sure you want to delete this resume?')) {
-      storageService.deleteResume(id);
-      setSavedResumes(storageService.getResumes());
+      try {
+        await supabaseService.deleteResume(id);
+        const resumes = await supabaseService.fetchResumes();
+        setSavedResumes(resumes);
+      } catch (error) {
+        console.error('Error deleting resume:', error);
+        alert('Failed to delete resume');
+      }
     }
   };
 
@@ -59,11 +80,11 @@ const Dashboard: React.FC<DashboardProps> = ({
              className="flex items-center gap-3 hover:bg-slate-50 p-2 rounded-full transition-colors border border-transparent hover:border-slate-200"
            >
              <div className="text-right hidden md:block">
-               <p className="text-sm font-bold text-slate-700">{user?.fullName}</p>
-               <p className="text-xs text-slate-500">{user?.email}</p>
+               <p className="text-sm font-bold text-slate-700">{userEmail.split('@')[0]}</p>
+               <p className="text-xs text-slate-500">{userEmail}</p>
              </div>
              <div className="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold border border-indigo-200">
-               {user?.fullName.charAt(0)}
+               {userEmail.charAt(0).toUpperCase()}
              </div>
            </button>
 
@@ -85,7 +106,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         
         {/* Welcome Section */}
         <div className="mb-10">
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">Welcome back, {user?.fullName.split(' ')[0]} 👋</h1>
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">Welcome back, {userEmail.split('@')[0]} 👋</h1>
           <p className="text-slate-500">Manage your resumes or create a new one to get started.</p>
         </div>
 
@@ -148,7 +169,11 @@ const Dashboard: React.FC<DashboardProps> = ({
             <Clock size={20} className="text-slate-400" /> Recent Resumes
           </h2>
           
-          {savedResumes.length === 0 ? (
+          {loading ? (
+             <div className="text-center py-10">
+               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+             </div>
+          ) : savedResumes.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl border border-slate-100 border-dashed">
               <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <FileText className="text-slate-300" size={32} />

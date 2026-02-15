@@ -8,38 +8,30 @@ import Login from './components/Login';
 import UserProfileView from './components/UserProfile';
 import { Resume, AppView } from './types';
 import { INITIAL_RESUME, SAMPLE_RESUME } from './constants';
-import { storageService } from './services/storageService';
+import { supabaseService } from './services/supabaseService';
+import { useAuth } from './hooks/useAuth';
 
 const App: React.FC = () => {
+  const { session, loading } = useAuth();
   const [currentView, setCurrentView] = useState<AppView>(AppView.LOGIN);
   const [resume, setResume] = useState<Resume>(INITIAL_RESUME);
 
   useEffect(() => {
-    // Check if user is logged in
-    const user = storageService.getCurrentUser();
-    if (user) {
-      setCurrentView(AppView.DASHBOARD);
-      // Try to load the most recent resume to state, so generators have context
-      const resumes = storageService.getResumes();
-      if(resumes.length > 0) {
-        setResume(resumes[0]);
+    if (!loading) {
+      if (session) {
+        setCurrentView(AppView.DASHBOARD);
+      } else {
+        setCurrentView(AppView.LOGIN);
       }
-    } else {
-      setCurrentView(AppView.LOGIN);
     }
-  }, []);
+  }, [session, loading]);
 
-  const handleLogin = (email: string, name: string) => {
-    storageService.login(email, name);
+  const handleLoginSuccess = () => {
     setCurrentView(AppView.DASHBOARD);
-    const resumes = storageService.getResumes();
-    if(resumes.length > 0) {
-        setResume(resumes[0]);
-    }
   };
 
-  const handleLogout = () => {
-    storageService.logout();
+  const handleLogout = async () => {
+    await supabaseService.logout();
     setCurrentView(AppView.LOGIN);
   };
 
@@ -77,10 +69,18 @@ const App: React.FC = () => {
     setCurrentView(AppView.DASHBOARD);
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="font-sans text-slate-900">
       {currentView === AppView.LOGIN && (
-        <Login onLogin={handleLogin} />
+        <Login onLogin={handleLoginSuccess} />
       )}
 
       {currentView === AppView.DASHBOARD && (

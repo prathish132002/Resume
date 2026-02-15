@@ -5,7 +5,7 @@ import ResumePreview from './ResumePreview';
 import { Button } from './ui/Button';
 import { Plus, Trash2, Wand2, ChevronDown, ChevronUp, Download, ArrowLeft, Save, X, Printer, Layout, Lightbulb, PlusCircle, History } from 'lucide-react';
 import { generateSummary, improveDescription, tailorResumeToJob, getSkillSuggestions } from '../services/geminiService';
-import { storageService } from '../services/storageService';
+import { supabaseService } from '../services/supabaseService';
 import HistoryModal from './HistoryModal';
 
 interface EditorProps {
@@ -22,6 +22,7 @@ const Editor: React.FC<EditorProps> = ({ resume, setResume, onBack }) => {
   const [showExportModal, setShowExportModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [previewScale, setPreviewScale] = useState(0.8);
+  const [isSaving, setIsSaving] = useState(false);
   
   // Skill Suggestion State
   const [suggestedSkills, setSuggestedSkills] = useState<string[]>([]);
@@ -102,13 +103,16 @@ const Editor: React.FC<EditorProps> = ({ resume, setResume, onBack }) => {
     setIsGenerating(false);
   };
 
-  const handleSaveResume = () => {
+  const handleSaveResume = async () => {
+    setIsSaving(true);
     try {
-      storageService.saveResume(resume);
-      alert('Resume saved to your account! Versions history updated.');
+      await supabaseService.saveResume(resume);
+      alert('Resume saved to your account!');
     } catch (error) {
       console.error('Failed to save resume:', error);
       alert('Failed to save resume.');
+    } finally {
+      setIsSaving(false);
     }
   };
   
@@ -227,6 +231,7 @@ const Editor: React.FC<EditorProps> = ({ resume, setResume, onBack }) => {
                     size="sm" 
                     icon={<Save size={14}/>} 
                     onClick={handleSaveResume}
+                    isLoading={isSaving}
                     >
                     Save
                     </Button>

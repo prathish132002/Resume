@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Upload, Wand2, Layout, FileText, User, LogOut, Clock, Trash2, Edit, FileSignature, AlertTriangle } from 'lucide-react';
-import { Resume, UserProfile } from '../types';
-import { supabaseService } from '../services/supabaseService';
+import { Resume } from '../types';
+import { firebaseService } from '../services/firebaseService';
 import { storageService } from '../services/storageService';
-import { supabase } from '../services/supabaseClient';
 import { Button } from './ui/Button';
 import { Logo } from './Logo';
 
@@ -47,11 +46,11 @@ const Dashboard: React.FC<DashboardProps> = ({
           const resumes = storageService.getResumes();
           setSavedResumes(resumes);
         } else {
-          // Supabase Mode
-          const { data: { user } } = await supabase.auth.getUser();
+          // Firebase Mode
+          const user = firebaseService.getCurrentUser();
           if (user) {
             setUserEmail(user.email || '');
-            const resumes = await supabaseService.fetchResumes();
+            const resumes = await firebaseService.fetchResumes();
             setSavedResumes(resumes);
           }
         }
@@ -72,8 +71,8 @@ const Dashboard: React.FC<DashboardProps> = ({
           storageService.deleteResume(id);
           setSavedResumes(storageService.getResumes());
         } else {
-          await supabaseService.deleteResume(id);
-          const resumes = await supabaseService.fetchResumes();
+          await firebaseService.deleteResume(id);
+          const resumes = await firebaseService.fetchResumes();
           setSavedResumes(resumes);
         }
       } catch (error) {

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from './ui/Button';
 import { ArrowRight, Lock, Mail, User, UserCircle } from 'lucide-react';
 import { Logo } from './Logo';
-import { supabaseService } from '../services/supabaseService';
+import { firebaseService } from '../services/firebaseService';
 
 interface LoginProps {
   onLogin: () => void;
@@ -24,7 +24,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onGuestLogin }) => {
 
     try {
       if (isLogin) {
-        await supabaseService.login(email, password);
+        await firebaseService.login(email, password);
         onLogin();
       } else {
         if (!name) {
@@ -32,26 +32,21 @@ const Login: React.FC<LoginProps> = ({ onLogin, onGuestLogin }) => {
           setLoading(false);
           return;
         }
-        const data = await supabaseService.signUp(email, password, name);
-        
-        // If session exists immediately, email confirmation is disabled or not required
-        if (data.session) {
-            onLogin();
-        } else {
-            // If no session, email confirmation is required
-            alert('Signup successful! Please check your email to confirm your account before logging in.');
-            setIsLogin(true);
-        }
+        await firebaseService.signUp(email, password, name);
+        onLogin();
       }
     } catch (err: any) {
       console.error(err);
-      // Handle Supabase specific error for unconfirmed email
-      if (err.message && (err.message.includes('Email not confirmed') || err.message.includes('Email not verified'))) {
-         setError('Please verify your email address. Check your inbox and spam folder.');
-      } else if (err.message && err.message.includes('Error sending confirmation email')) {
-         setError('Email service limit reached. Please use "Continue as Guest" below.');
+      // Handle Firebase specific errors
+      const errorMessage = err.message || 'Authentication failed';
+      if (err.code === 'auth/email-already-in-use') {
+        setError('Email is already in use.');
+      } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
+        setError('Invalid email or password.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password should be at least 6 characters.');
       } else {
-         setError(err.message || 'Authentication failed');
+        setError(errorMessage);
       }
     } finally {
       setLoading(false);

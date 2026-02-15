@@ -5,7 +5,7 @@ import ResumePreview from './ResumePreview';
 import { Button } from './ui/Button';
 import { Plus, Trash2, Wand2, ChevronDown, ChevronUp, Download, ArrowLeft, Save, X, Printer, Layout, Lightbulb, PlusCircle, History } from 'lucide-react';
 import { generateSummary, improveDescription, tailorResumeToJob, getSkillSuggestions } from '../services/geminiService';
-import { supabaseService } from '../services/supabaseService';
+import { firebaseService } from '../services/firebaseService';
 import { storageService } from '../services/storageService';
 import HistoryModal from './HistoryModal';
 
@@ -112,7 +112,7 @@ const Editor: React.FC<EditorProps> = ({ isGuest, resume, setResume, onBack }) =
         storageService.saveResume(resume);
         alert('Resume saved locally (Guest Mode)!');
       } else {
-        await supabaseService.saveResume(resume);
+        await firebaseService.saveResume(resume);
         alert('Resume saved to your account!');
       }
     } catch (error) {

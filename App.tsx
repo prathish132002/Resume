@@ -8,25 +8,25 @@ import Login from './components/Login';
 import UserProfileView from './components/UserProfile';
 import { Resume, AppView } from './types';
 import { INITIAL_RESUME, SAMPLE_RESUME } from './constants';
-import { supabaseService } from './services/supabaseService';
+import { firebaseService } from './services/firebaseService';
 import { useAuth } from './hooks/useAuth';
 
 const App: React.FC = () => {
-  const { session, loading } = useAuth();
+  const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState<AppView>(AppView.LOGIN);
   const [resume, setResume] = useState<Resume>(INITIAL_RESUME);
   const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
     if (!loading) {
-      if (session) {
+      if (user) {
         setIsGuest(false);
         setCurrentView(AppView.DASHBOARD);
       } else if (!isGuest) {
         setCurrentView(AppView.LOGIN);
       }
     }
-  }, [session, loading, isGuest]);
+  }, [user, loading, isGuest]);
 
   const handleLoginSuccess = () => {
     setIsGuest(false);
@@ -40,7 +40,7 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     if (!isGuest) {
-      await supabaseService.logout();
+      await firebaseService.logout();
     }
     setIsGuest(false);
     setCurrentView(AppView.LOGIN);

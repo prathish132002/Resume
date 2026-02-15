@@ -1,8 +1,57 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 const apiKey = process.env.API_KEY || '';
+// List of models to try in order of preference
+const MODELS = [
+  'gemini-2.0-flash',
+  'gemini-flash-latest',
+  'gemini-2.0-flash-lite-preview-09-2025',
+  'gemini-1.5-flash-8b'
+];
 
 const ai = new GoogleGenAI({ apiKey });
+
+/**
+ * Helper function to try generating content with multiple models if one fails.
+ * Prioritizes the models in the MODELS array.
+ */
+async function generateWithFallback(params: any): Promise<any> {
+  let lastError;
+  for (const model of MODELS) {
+    try {
+      // Create a specific config for this attempt
+      const matchParams = {
+        ...params,
+        model: model
+      };
+      
+      console.log(`Attempting to generate with model: ${model}`);
+      const response = await ai.models.generateContent(matchParams);
+      return response;
+    } catch (error: any) {
+      console.warn(`Model ${model} failed:`, error.message || error);
+      lastError = error;
+      
+      // If error is NOT a 404 (Not Found) or 429 (Resource Exhausted), 
+      // it might be a bad request, so maybe don't retry? 
+      // But for now we retry on everything to be safe as SDK errors can be vague.
+      // Specifically check for "not found" or "quota" to continue.
+      if (
+        JSON.stringify(error).includes("404") || 
+        JSON.stringify(error).includes("429") || 
+        JSON.stringify(error).includes("NOT_FOUND") ||
+        JSON.stringify(error).includes("RESOURCE_EXHAUSTED")
+      ) {
+         continue;
+      }
+      
+      // If it's another error, we might still want to try the next model just in case,
+      // but usually 400s are prompt issues.
+      continue; 
+    }
+  }
+  throw lastError || new Error("All models failed");
+}
 
 export const generateSummary = async (resumeContext: string, jobRole?: string): Promise<string> => {
   try {
@@ -22,8 +71,7 @@ export const generateSummary = async (resumeContext: string, jobRole?: string): 
       Return ONLY the summary text, no explanations.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+    const response = await generateWithFallback({
       contents: prompt,
     });
 
@@ -52,8 +100,7 @@ export const improveDescription = async (text: string, type: 'experience' | 'pro
       Return ONLY the improved text as bullet points (if applicable) or a paragraph. Do not add conversational filler.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+    const response = await generateWithFallback({
       contents: prompt,
     });
 
@@ -91,8 +138,7 @@ export const tailorResumeToJob = async (currentResumeJSON: string, jobDescriptio
       Do NOT wrap in markdown code blocks. Just the raw JSON string.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+    const response = await generateWithFallback({
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -127,8 +173,7 @@ export const transformResumeForRole = async (currentResumeJSON: string, targetRo
       Return the output strictly as a valid JSON object matching the schema.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+    const response = await generateWithFallback({
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -209,8 +254,7 @@ export const parseResumeContent = async (text: string): Promise<string> => {
       7. **Output:** Return **ONLY** the raw JSON object. Do not wrap in markdown code blocks.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+    const response = await generateWithFallback({
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -251,8 +295,7 @@ export const generateResumeByRole = async (role: string, level: string): Promise
       Return ONLY valid JSON.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+    const response = await generateWithFallback({
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -284,8 +327,7 @@ export const getSkillSuggestions = async (jobTitle: string, currentSkills: strin
       return ["Communication", "Leadership", "Problem Solving", "Teamwork", "Time Management", "Critical Thinking"];
     }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+    const response = await generateWithFallback({
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -325,8 +367,7 @@ export const generateCoverLetter = async (
       Return ONLY the body of the cover letter (including salutation and closing), no markdown formatting or explanations.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+    const response = await generateWithFallback({
       contents: prompt,
     });
 

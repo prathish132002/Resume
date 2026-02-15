@@ -5,6 +5,7 @@ export const INITIAL_RESUME: Resume = {
   name: 'Untitled Resume',
   personalInfo: {
     fullName: '',
+    jobTitle: '',
     email: '',
     phone: '',
     linkedin: '',
@@ -25,6 +26,7 @@ export const SAMPLE_RESUME: Resume = {
   name: 'John Doe - Software Engineer',
   personalInfo: {
     fullName: 'John Doe',
+    jobTitle: 'Software Engineer',
     email: 'john.doe@example.com',
     phone: '(555) 123-4567',
     linkedin: 'linkedin.com/in/johndoe',

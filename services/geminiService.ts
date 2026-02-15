@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const apiKey = process.env.API_KEY || ''; 
+const apiKey = process.env.API_KEY || '';
 
 const ai = new GoogleGenAI({ apiKey });
 
@@ -23,11 +23,8 @@ export const generateSummary = async (resumeContext: string, jobRole?: string): 
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: prompt,
-      config: {
-        thinkingConfig: { thinkingBudget: 0 }
-      }
     });
 
     return response.text || "Could not generate summary.";
@@ -56,11 +53,8 @@ export const improveDescription = async (text: string, type: 'experience' | 'pro
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: prompt,
-      config: {
-        thinkingConfig: { thinkingBudget: 0 }
-      }
     });
 
     return response.text || text;
@@ -98,7 +92,7 @@ export const tailorResumeToJob = async (currentResumeJSON: string, jobDescriptio
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -134,7 +128,7 @@ export const transformResumeForRole = async (currentResumeJSON: string, targetRo
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -163,6 +157,7 @@ export const parseResumeContent = async (text: string): Promise<string> => {
       {
         "personalInfo": {
           "fullName": "Extract full name",
+          "jobTitle": "Extract job title or current role",
           "email": "Extract email address",
           "phone": "Extract phone number",
           "linkedin": "Extract LinkedIn URL",
@@ -215,7 +210,7 @@ export const parseResumeContent = async (text: string): Promise<string> => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -244,7 +239,7 @@ export const generateResumeByRole = async (role: string, level: string): Promise
 
       Output Structure (JSON):
       {
-        "personalInfo": { "fullName": "[Placeholder Name]", "email": "email@example.com", "phone": "123-456-7890", "linkedin": "linkedin.com/in/candidate", "portfolio": "", "location": "City, Country", "summary": "..." },
+        "personalInfo": { "fullName": "[Placeholder Name]", "jobTitle": "${role}", "email": "email@example.com", "phone": "123-456-7890", "linkedin": "linkedin.com/in/candidate", "portfolio": "", "location": "City, Country", "summary": "..." },
         "education": [{ "id": "generated-id-1", "institution": "University Name", "degree": "Degree Name", "startDate": "YYYY", "endDate": "YYYY", "gpa": "3.X" }],
         "experience": [{ "id": "generated-id-2", "company": "Tech Corp", "role": "${role}", "startDate": "YYYY", "endDate": "Present", "description": "..." }],
         "projects": [{ "id": "generated-id-3", "name": "Project Name", "technologies": "Tech Stack", "link": "", "description": "..." }],
@@ -257,7 +252,7 @@ export const generateResumeByRole = async (role: string, level: string): Promise
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -275,22 +270,22 @@ export const getSkillSuggestions = async (jobTitle: string, currentSkills: strin
   try {
     let prompt = "";
     if (jobTitle) {
-         prompt = `
+      prompt = `
           You are a career expert. List 15 relevant technical and soft skills for the job role: "${jobTitle}".
           Return ONLY a JSON array of strings. Do not include markdown formatting.
         `;
     } else if (currentSkills.length > 0) {
-        prompt = `
+      prompt = `
           You are a career expert. Based on these skills: "${currentSkills.join(', ')}", suggest 15 related or complementary skills.
           Return ONLY a JSON array of strings. Do not include markdown formatting.
         `;
     } else {
-         // Fallback if no context
-         return ["Communication", "Leadership", "Problem Solving", "Teamwork", "Time Management", "Critical Thinking"];
+      // Fallback if no context
+      return ["Communication", "Leadership", "Problem Solving", "Teamwork", "Time Management", "Critical Thinking"];
     }
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -331,11 +326,8 @@ export const generateCoverLetter = async (
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-1.5-flash',
       contents: prompt,
-      config: {
-        thinkingConfig: { thinkingBudget: 0 }
-      }
     });
 
     return response.text || "Failed to generate cover letter.";

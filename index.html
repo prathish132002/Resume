@@ -1,80 +1,91 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ResumeAI - Smart Resume Builder</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-            },
-            colors: {
-              primary: {
-                50: '#eff6ff',
-                100: '#dbeafe',
-                500: '#3b82f6',
-                600: '#2563eb',
-                700: '#1d4ed8',
-              }
-            }
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResumeAI - Smart Resume Builder</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
           },
+          colors: {
+            primary: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+            }
+          }
         },
+      },
+    }
+  </script>
+  <style>
+    /* Custom scrollbar for cleaner look */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    .a4-paper {
+      width: 210mm;
+      min-height: 297mm;
+      background: white;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    @media print {
+      body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
       }
-    </script>
-    <style>
-      /* Custom scrollbar for cleaner look */
+
+      body * {
+        visibility: hidden;
+      }
+
+      .print-area,
+      .print-area * {
+        visibility: visible;
+      }
+
+      .print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        transform: none !important;
+      }
+
+      /* Hide scrollbars in print */
       ::-webkit-scrollbar {
-        width: 8px;
-        height: 8px;
+        display: none;
       }
-      ::-webkit-scrollbar-track {
-        background: #f1f5f9; 
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #cbd5e1; 
-        border-radius: 4px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8; 
-      }
-      .a4-paper {
-        width: 210mm;
-        min-height: 297mm;
-        background: white;
-        box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      }
-      @media print {
-        body {
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-        body * {
-          visibility: hidden;
-        }
-        .print-area, .print-area * {
-          visibility: visible;
-        }
-        .print-area {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-          margin: 0 !important;
-          padding: 0 !important;
-          box-shadow: none !important;
-          transform: none !important;
-        }
-        /* Hide scrollbars in print */
-        ::-webkit-scrollbar {
-          display: none;
-        }
-      }
-    </style>
+    }
+  </style>
   <script type="importmap">
 {
   "imports": {
@@ -86,13 +97,15 @@
     "firebase/app": "https://esm.sh/firebase@10.8.0/app",
     "firebase/auth": "https://esm.sh/firebase@10.8.0/auth",
     "firebase/firestore": "https://esm.sh/firebase@10.8.0/firestore",
-    "firebase/": "https://esm.sh/firebase@^12.9.0/"
+    "firebase/": "https://esm.sh/firebase@10.8.0/"
   }
 }
 </script>
 </head>
-  <body class="bg-slate-50 text-slate-900 font-sans antialiased">
-    <div id="root"></div>
-    <script type="module" src="/index.tsx"></script>
-  </body>
+
+<body class="bg-slate-50 text-slate-900 font-sans antialiased">
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
 </html>

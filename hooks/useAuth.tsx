@@ -8,10 +8,21 @@ export const useAuth = () => {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    const initSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("Auth session error:", error.message);
+        }
+        setSession(session);
+      } catch (err) {
+        console.error("Unexpected auth error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initSession();
 
     // Listen for changes
     const {

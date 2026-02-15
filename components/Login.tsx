@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { Button } from './ui/Button';
-import { ArrowRight, Lock, Mail, User } from 'lucide-react';
+import { ArrowRight, Lock, Mail, User, UserCircle } from 'lucide-react';
 import { Logo } from './Logo';
 import { supabaseService } from '../services/supabaseService';
 
 interface LoginProps {
   onLogin: () => void;
+  onGuestLogin: () => void;
 }
 
-const Login: React.FC<LoginProps> = ({ onLogin }) => {
+const Login: React.FC<LoginProps> = ({ onLogin, onGuestLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,13 +32,27 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           setLoading(false);
           return;
         }
-        await supabaseService.signUp(email, password, name);
-        alert('Signup successful! Please log in.');
-        setIsLogin(true);
+        const data = await supabaseService.signUp(email, password, name);
+        
+        // If session exists immediately, email confirmation is disabled or not required
+        if (data.session) {
+            onLogin();
+        } else {
+            // If no session, email confirmation is required
+            alert('Signup successful! Please check your email to confirm your account before logging in.');
+            setIsLogin(true);
+        }
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'Authentication failed');
+      // Handle Supabase specific error for unconfirmed email
+      if (err.message && (err.message.includes('Email not confirmed') || err.message.includes('Email not verified'))) {
+         setError('Please verify your email address. Check your inbox and spam folder.');
+      } else if (err.message && err.message.includes('Error sending confirmation email')) {
+         setError('Email service limit reached. Please use "Continue as Guest" below.');
+      } else {
+         setError(err.message || 'Authentication failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -113,13 +128,25 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </Button>
         </form>
         
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center space-y-4">
           <button 
-            onClick={() => setIsLogin(!isLogin)}
+            onClick={() => {
+                setIsLogin(!isLogin);
+                setError('');
+            }}
             className="text-sm text-indigo-600 hover:text-indigo-800 font-medium hover:underline"
           >
             {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
           </button>
+
+          <div className="border-t border-slate-100 pt-4">
+            <button 
+                onClick={onGuestLogin}
+                className="text-sm text-slate-500 hover:text-slate-800 font-medium flex items-center justify-center gap-2 w-full"
+            >
+                <UserCircle size={16} /> Continue as Guest (Local Mode)
+            </button>
+          </div>
         </div>
       </div>
     </div>

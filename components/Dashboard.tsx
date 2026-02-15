@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Plus, Upload, Wand2, Layout, FileText, User, LogOut, Clock, Trash2, Edit, FileSignature } from 'lucide-react';
+import { Plus, Upload, Wand2, Layout, FileText, User, LogOut, Clock, Trash2, Edit, FileSignature, AlertTriangle } from 'lucide-react';
 import { Resume, UserProfile } from '../types';
 import { supabaseService } from '../services/supabaseService';
+import { storageService } from '../services/storageService';
 import { supabase } from '../services/supabaseClient';
 import { Button } from './ui/Button';
 import { Logo } from './Logo';
 
 interface DashboardProps {
+  isGuest: boolean;
   onCreateNew: () => void;
   onLoadSample: () => void;
   onImport: () => void;
@@ -18,6 +20,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ 
+  isGuest,
   onCreateNew, 
   onLoadSample, 
   onImport, 
@@ -34,12 +37,23 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   useEffect(() => {
     const loadData = async () => {
+      setLoading(true);
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setUserEmail(user.email || '');
-          const resumes = await supabaseService.fetchResumes();
+        if (isGuest) {
+          // Guest Mode
+          // Initialize guest user if not exists (simulated login)
+          const guestUser = storageService.login('guest@local', 'Guest User');
+          setUserEmail(guestUser.email);
+          const resumes = storageService.getResumes();
           setSavedResumes(resumes);
+        } else {
+          // Supabase Mode
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            setUserEmail(user.email || '');
+            const resumes = await supabaseService.fetchResumes();
+            setSavedResumes(resumes);
+          }
         }
       } catch (error) {
         console.error('Error loading dashboard data:', error);
@@ -48,15 +62,20 @@ const Dashboard: React.FC<DashboardProps> = ({
       }
     };
     loadData();
-  }, []);
+  }, [isGuest]);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (confirm('Are you sure you want to delete this resume?')) {
       try {
-        await supabaseService.deleteResume(id);
-        const resumes = await supabaseService.fetchResumes();
-        setSavedResumes(resumes);
+        if (isGuest) {
+          storageService.deleteResume(id);
+          setSavedResumes(storageService.getResumes());
+        } else {
+          await supabaseService.deleteResume(id);
+          const resumes = await supabaseService.fetchResumes();
+          setSavedResumes(resumes);
+        }
       } catch (error) {
         console.error('Error deleting resume:', error);
         alert('Failed to delete resume');
@@ -72,6 +91,11 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="flex items-center gap-3">
            <Logo size={40} />
            <span className="font-bold text-xl text-slate-800 tracking-tight">ResumeAI</span>
+           {isGuest && (
+             <span className="bg-amber-100 text-amber-700 text-xs px-2 py-1 rounded-full font-medium flex items-center gap-1">
+               <AlertTriangle size={10} /> Guest Mode
+             </span>
+           )}
         </div>
 
         <div className="relative">
@@ -81,7 +105,7 @@ const Dashboard: React.FC<DashboardProps> = ({
            >
              <div className="text-right hidden md:block">
                <p className="text-sm font-bold text-slate-700">{userEmail.split('@')[0]}</p>
-               <p className="text-xs text-slate-500">{userEmail}</p>
+               <p className="text-xs text-slate-500">{isGuest ? 'Local Storage' : userEmail}</p>
              </div>
              <div className="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold border border-indigo-200">
                {userEmail.charAt(0).toUpperCase()}
@@ -90,12 +114,16 @@ const Dashboard: React.FC<DashboardProps> = ({
 
            {showMenu && (
              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-slate-100 py-2 animate-in fade-in slide-in-from-top-2">
-               <button onClick={onOpenProfile} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
-                 <User size={16} /> My Profile
-               </button>
-               <div className="border-t border-slate-100 my-1"></div>
+               {!isGuest && (
+                 <>
+                   <button onClick={onOpenProfile} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                     <User size={16} /> My Profile
+                   </button>
+                   <div className="border-t border-slate-100 my-1"></div>
+                 </>
+               )}
                <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
-                 <LogOut size={16} /> Sign Out
+                 <LogOut size={16} /> {isGuest ? 'Exit Guest Mode' : 'Sign Out'}
                </button>
              </div>
            )}
@@ -107,7 +135,11 @@ const Dashboard: React.FC<DashboardProps> = ({
         {/* Welcome Section */}
         <div className="mb-10">
           <h1 className="text-3xl font-bold text-slate-800 mb-2">Welcome back, {userEmail.split('@')[0]} 👋</h1>
-          <p className="text-slate-500">Manage your resumes or create a new one to get started.</p>
+          <p className="text-slate-500">
+            {isGuest 
+              ? 'You are in Guest Mode. Resumes are saved to this browser only.' 
+              : 'Manage your resumes or create a new one to get started.'}
+          </p>
         </div>
 
         {/* Action Grid */}

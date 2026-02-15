@@ -15,23 +15,34 @@ const App: React.FC = () => {
   const { session, loading } = useAuth();
   const [currentView, setCurrentView] = useState<AppView>(AppView.LOGIN);
   const [resume, setResume] = useState<Resume>(INITIAL_RESUME);
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
     if (!loading) {
       if (session) {
+        setIsGuest(false);
         setCurrentView(AppView.DASHBOARD);
-      } else {
+      } else if (!isGuest) {
         setCurrentView(AppView.LOGIN);
       }
     }
-  }, [session, loading]);
+  }, [session, loading, isGuest]);
 
   const handleLoginSuccess = () => {
+    setIsGuest(false);
+    setCurrentView(AppView.DASHBOARD);
+  };
+
+  const handleGuestLogin = () => {
+    setIsGuest(true);
     setCurrentView(AppView.DASHBOARD);
   };
 
   const handleLogout = async () => {
-    await supabaseService.logout();
+    if (!isGuest) {
+      await supabaseService.logout();
+    }
+    setIsGuest(false);
     setCurrentView(AppView.LOGIN);
   };
 
@@ -80,11 +91,12 @@ const App: React.FC = () => {
   return (
     <div className="font-sans text-slate-900">
       {currentView === AppView.LOGIN && (
-        <Login onLogin={handleLoginSuccess} />
+        <Login onLogin={handleLoginSuccess} onGuestLogin={handleGuestLogin} />
       )}
 
       {currentView === AppView.DASHBOARD && (
         <Dashboard 
+          isGuest={isGuest}
           onCreateNew={handleCreateNew} 
           onLoadSample={handleLoadSample}
           onImport={handleImport}
@@ -126,6 +138,7 @@ const App: React.FC = () => {
       
       {currentView === AppView.EDITOR && (
         <Editor 
+          isGuest={isGuest}
           resume={resume} 
           setResume={setResume} 
           onBack={handleBackToDashboard} 

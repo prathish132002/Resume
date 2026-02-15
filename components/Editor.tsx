@@ -6,15 +6,17 @@ import { Button } from './ui/Button';
 import { Plus, Trash2, Wand2, ChevronDown, ChevronUp, Download, ArrowLeft, Save, X, Printer, Layout, Lightbulb, PlusCircle, History } from 'lucide-react';
 import { generateSummary, improveDescription, tailorResumeToJob, getSkillSuggestions } from '../services/geminiService';
 import { supabaseService } from '../services/supabaseService';
+import { storageService } from '../services/storageService';
 import HistoryModal from './HistoryModal';
 
 interface EditorProps {
+  isGuest: boolean;
   resume: Resume;
   setResume: React.Dispatch<React.SetStateAction<Resume>>;
   onBack: () => void;
 }
 
-const Editor: React.FC<EditorProps> = ({ resume, setResume, onBack }) => {
+const Editor: React.FC<EditorProps> = ({ isGuest, resume, setResume, onBack }) => {
   const [activeTemplate, setActiveTemplate] = useState<TemplateType>(TemplateType.ATS_CLASSIC);
   const [isGenerating, setIsGenerating] = useState(false);
   const [tailoringJobDesc, setTailoringJobDesc] = useState('');
@@ -106,8 +108,13 @@ const Editor: React.FC<EditorProps> = ({ resume, setResume, onBack }) => {
   const handleSaveResume = async () => {
     setIsSaving(true);
     try {
-      await supabaseService.saveResume(resume);
-      alert('Resume saved to your account!');
+      if (isGuest) {
+        storageService.saveResume(resume);
+        alert('Resume saved locally (Guest Mode)!');
+      } else {
+        await supabaseService.saveResume(resume);
+        alert('Resume saved to your account!');
+      }
     } catch (error) {
       console.error('Failed to save resume:', error);
       alert('Failed to save resume.');

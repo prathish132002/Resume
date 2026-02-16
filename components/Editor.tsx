@@ -18,6 +18,7 @@ interface EditorProps {
 
 const Editor: React.FC<EditorProps> = ({ isGuest, resume, setResume, onBack }) => {
   const [activeTemplate, setActiveTemplate] = useState<TemplateType>(TemplateType.ATS_CLASSIC);
+  const [layoutMode, setLayoutMode] = useState<'standard' | 'compact'>('standard');
   const [isGenerating, setIsGenerating] = useState(false);
   const [tailoringJobDesc, setTailoringJobDesc] = useState('');
   const [showTailorModal, setShowTailorModal] = useState(false);
@@ -524,18 +525,36 @@ const Editor: React.FC<EditorProps> = ({ isGuest, resume, setResume, onBack }) =
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-400">Zoom</span>
-            <button onClick={() => setPreviewScale(Math.max(0.4, previewScale - 0.1))} className="px-2 py-1 bg-slate-700 rounded">-</button>
-            <span className="w-8 text-center">{Math.round(previewScale * 100)}%</span>
-            <button onClick={() => setPreviewScale(Math.min(1.5, previewScale + 0.1))} className="px-2 py-1 bg-slate-700 rounded">+</button>
+          <div className="flex items-center gap-4 text-xs">
+            <div className="flex items-center gap-2 bg-slate-700 p-1 rounded">
+              <button 
+                onClick={() => setLayoutMode('standard')}
+                className={`px-2 py-0.5 rounded ${layoutMode === 'standard' ? 'bg-slate-500 text-white font-medium' : 'text-slate-400 hover:text-white'}`}
+              >
+                Standard
+              </button>
+              <button 
+                onClick={() => setLayoutMode('compact')}
+                className={`px-2 py-0.5 rounded ${layoutMode === 'compact' ? 'bg-slate-500 text-white font-medium' : 'text-slate-400 hover:text-white'}`}
+                title="Reduces spacing to fit more content"
+              >
+                Compact
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-1">
+               <span className="text-slate-400 mr-1">Zoom</span>
+               <button onClick={() => setPreviewScale(Math.max(0.4, previewScale - 0.1))} className="px-2 py-1 bg-slate-700 rounded">-</button>
+               <span className="w-8 text-center">{Math.round(previewScale * 100)}%</span>
+               <button onClick={() => setPreviewScale(Math.min(1.5, previewScale + 0.1))} className="px-2 py-1 bg-slate-700 rounded">+</button>
+            </div>
           </div>
         </div>
 
         {/* Live Preview Canvas */}
         <div className="flex-1 overflow-auto flex justify-center p-8 bg-slate-500 print:bg-white print:p-0">
           <div className="print:w-full">
-            <ResumePreview resume={resume} template={activeTemplate} scale={previewScale} />
+            <ResumePreview resume={resume} template={activeTemplate} scale={previewScale} layoutMode={layoutMode} />
           </div>
         </div>
       </div>

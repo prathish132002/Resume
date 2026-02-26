@@ -9,8 +9,8 @@ export const Logo = ({ size = 32, className = "" }: { size?: number, className?:
     xmlns="http://www.w3.org/2000/svg"
     className={className}
   >
-    {/* Background - Brand Violet rounded square */}
-    <rect width="100" height="100" rx="22" fill="#7c3aed" />
+    {/* Background - Blue rounded square */}
+    <rect width="100" height="100" rx="22" fill="#2563EB" />
     
     {/* Document Icon - White */}
     <path 
@@ -18,15 +18,15 @@ export const Logo = ({ size = 32, className = "" }: { size?: number, className?:
       fill="white" 
     />
     
-    {/* Document Lines - Light Brand */}
-    <rect x="40" y="34" width="20" height="4" rx="2" fill="#ede9fe" />
-    <rect x="40" y="42" width="20" height="4" rx="2" fill="#ede9fe" />
-    <rect x="40" y="50" width="20" height="4" rx="2" fill="#ede9fe" />
-    <rect x="40" y="58" width="12" height="4" rx="2" fill="#ede9fe" />
+    {/* Document Lines - Light Blue */}
+    <rect x="40" y="34" width="20" height="4" rx="2" fill="#DBEAFE" />
+    <rect x="40" y="42" width="20" height="4" rx="2" fill="#DBEAFE" />
+    <rect x="40" y="50" width="20" height="4" rx="2" fill="#DBEAFE" />
+    <rect x="40" y="58" width="12" height="4" rx="2" fill="#DBEAFE" />
 
-    {/* Checkmark Badge - Accent Teal with White Check */}
+    {/* Checkmark Badge - Red with White Check */}
     <g filter="url(#filter0_d_logo)">
-        <circle cx="70" cy="70" r="16" fill="#14b8a6" stroke="white" strokeWidth="4"/>
+        <circle cx="70" cy="70" r="16" fill="#EF4444" stroke="white" strokeWidth="4"/>
         <path d="M64 70L68 74L76 66" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
     </g>
     

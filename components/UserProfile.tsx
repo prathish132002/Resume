@@ -1,47 +1,79 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile } from '../types';
 import { storageService } from '../services/storageService';
+import { firebaseService } from '../services/firebaseService';
 import { Button } from './ui/Button';
-import { ArrowLeft, User, Briefcase, Save, Check } from 'lucide-react';
+import { ArrowLeft, User, Briefcase, Save, Check, Mail } from 'lucide-react';
 
 interface UserProfileProps {
+  isGuest: boolean;
   onBack: () => void;
 }
 
-const UserProfileView: React.FC<UserProfileProps> = ({ onBack }) => {
+const UserProfileView: React.FC<UserProfileProps> = ({ isGuest, onBack }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ fullName: '', jobTitle: '' });
+  const [formData, setFormData] = useState({ fullName: '', email: '', jobTitle: '' });
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const user = storageService.getCurrentUser();
-    if (user) {
-      setProfile(user);
-      setFormData({
-        fullName: user.fullName,
-        jobTitle: user.jobTitle || ''
-      });
-    }
-  }, []);
+    const fetchProfile = async () => {
+      setLoading(true);
+      try {
+        let user: UserProfile | null = null;
+        if (isGuest) {
+          user = storageService.getCurrentUser();
+        } else {
+          user = await firebaseService.getUserProfile();
+        }
+        
+        if (user) {
+          setProfile(user);
+          setFormData({
+            fullName: user.fullName,
+            email: user.email,
+            jobTitle: user.jobTitle || ''
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProfile();
+  }, [isGuest]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!profile) return;
     
     const updatedProfile: UserProfile = {
       ...profile,
       fullName: formData.fullName,
+      email: formData.email,
       jobTitle: formData.jobTitle
     };
 
-    storageService.updateProfile(updatedProfile);
-    setProfile(updatedProfile);
-    setIsEditing(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 2000);
+    try {
+      if (isGuest) {
+        storageService.updateProfile(updatedProfile);
+      } else {
+        await firebaseService.updateUserProfile(updatedProfile);
+      }
+      setProfile(updatedProfile);
+      setIsEditing(false);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2000);
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      alert("Failed to save profile");
+    }
   };
 
-  if (!profile) return <div>Loading...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div></div>;
+  if (!profile) return <div>Failed to load profile.</div>;
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-12">
@@ -84,6 +116,18 @@ const UserProfileView: React.FC<UserProfileProps> = ({ onBack }) => {
                         className="w-full pl-10 p-2 border border-slate-200 rounded focus:ring-2 focus:ring-indigo-500 outline-none"
                         value={formData.fullName}
                         onChange={e => setFormData({...formData, fullName: e.target.value})}
+                      />
+                   </div>
+                </div>
+                <div>
+                   <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                   <div className="relative">
+                      <Mail className="absolute left-3 top-2.5 text-slate-400" size={16} />
+                      <input 
+                        type="email"
+                        className="w-full pl-10 p-2 border border-slate-200 rounded focus:ring-2 focus:ring-indigo-500 outline-none"
+                        value={formData.email}
+                        onChange={e => setFormData({...formData, email: e.target.value})}
                       />
                    </div>
                 </div>

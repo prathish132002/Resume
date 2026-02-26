@@ -19,22 +19,22 @@ export const Button: React.FC<ButtonProps> = ({
   const baseStyles = "inline-flex items-center justify-center rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
   
   const variants = {
-    primary: "bg-gradient-to-r from-brand-600 to-brand-500 text-white hover:from-brand-700 hover:to-brand-600 focus:ring-brand-500 shadow-md hover:shadow-lg transition-all duration-300",
-    secondary: "bg-brand-50 text-brand-700 hover:bg-brand-100 focus:ring-brand-500 border border-brand-100",
-    outline: "border border-slate-200 bg-white text-slate-700 hover:border-brand-300 hover:text-brand-600 focus:ring-brand-500 shadow-sm",
-    ghost: "bg-transparent text-slate-600 hover:bg-slate-100 hover:text-brand-600 focus:ring-slate-500",
-    danger: "bg-red-500 text-white hover:bg-red-600 focus:ring-red-500 shadow-sm",
+    primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 shadow-sm",
+    secondary: "bg-indigo-100 text-indigo-700 hover:bg-indigo-200 focus:ring-indigo-500",
+    outline: "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus:ring-slate-500",
+    ghost: "bg-transparent text-slate-600 hover:bg-slate-100 focus:ring-slate-500",
+    danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500",
   };
 
   const sizes = {
     sm: "px-3 py-1.5 text-xs",
-    md: "px-5 py-2.5 text-sm",
-    lg: "px-6 py-3.5 text-base",
+    md: "px-4 py-2 text-sm",
+    lg: "px-6 py-3 text-base",
   };
 
   return (
     <button 
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} active:scale-95 transform duration-100 ${className}`} 
+      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`} 
       disabled={isLoading || props.disabled}
       {...props}
     >

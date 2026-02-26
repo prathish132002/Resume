@@ -83,18 +83,16 @@ const Dashboard: React.FC<DashboardProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-transparent flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
       
       {/* Header */}
-      <header className="sticky top-0 z-30 px-6 py-4 flex justify-between items-center bg-white/80 backdrop-blur-md border-b border-white/50 shadow-sm transition-all duration-300">
-        <div className="flex items-center gap-3 group cursor-pointer">
-           <div className="transform transition-transform group-hover:scale-110 duration-300">
-             <Logo size={42} />
-           </div>
-           <span className="font-bold text-2xl text-slate-800 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-brand-700 to-brand-500">ResumeAI</span>
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 px-6 py-4 flex justify-between items-center shadow-sm">
+        <div className="flex items-center gap-3">
+           <Logo size={40} />
+           <span className="font-bold text-xl text-slate-800 tracking-tight">ResumeAI</span>
            {isGuest && (
-             <span className="bg-amber-100 text-amber-700 text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1 border border-amber-200 shadow-sm ml-2">
-               <AlertTriangle size={12} /> Guest Mode
+             <span className="bg-amber-100 text-amber-700 text-xs px-2 py-1 rounded-full font-medium flex items-center gap-1">
+               <AlertTriangle size={10} /> Guest Mode
              </span>
            )}
         </div>
@@ -102,29 +100,25 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="relative">
            <button 
              onClick={() => setShowMenu(!showMenu)}
-             className="flex items-center gap-3 hover:bg-white p-1.5 pr-4 rounded-full transition-all border border-transparent hover:border-slate-200 hover:shadow-md group"
+             className="flex items-center gap-3 hover:bg-slate-50 p-2 rounded-full transition-colors border border-transparent hover:border-slate-200"
            >
-             <div className="h-10 w-10 bg-gradient-to-br from-brand-100 to-brand-50 rounded-full flex items-center justify-center text-brand-700 font-bold border border-brand-200 group-hover:scale-105 transition-transform shadow-inner">
-               {userEmail.charAt(0).toUpperCase()}
-             </div>
              <div className="text-right hidden md:block">
-               <p className="text-sm font-bold text-slate-700 group-hover:text-brand-700 transition-colors">{userEmail.split('@')[0]}</p>
+               <p className="text-sm font-bold text-slate-700">{userEmail.split('@')[0]}</p>
                <p className="text-xs text-slate-500">{isGuest ? 'Local Storage' : userEmail}</p>
+             </div>
+             <div className="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold border border-indigo-200">
+               {userEmail.charAt(0).toUpperCase()}
              </div>
            </button>
 
            {showMenu && (
-             <div className="absolute right-0 mt-2 w-56 bg-white/90 backdrop-blur-xl rounded-xl shadow-2xl border border-slate-100 py-2 animate-in fade-in slide-in-from-top-2 origin-top-right z-50">
-               {!isGuest && (
-                 <>
-                   <button onClick={onOpenProfile} className="w-full text-left px-5 py-3 text-sm text-slate-700 hover:bg-brand-50 hover:text-brand-700 flex items-center gap-3 transition-colors font-medium">
-                     <User size={18} /> My Profile
-                   </button>
-                   <div className="border-t border-slate-100 my-1"></div>
-                 </>
-               )}
-               <button onClick={onLogout} className="w-full text-left px-5 py-3 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors font-medium">
-                 <LogOut size={18} /> {isGuest ? 'Exit Guest Mode' : 'Sign Out'}
+             <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl border border-slate-100 py-2 animate-in fade-in slide-in-from-top-2">
+               <button onClick={onOpenProfile} className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                 <User size={16} /> My Profile
+               </button>
+               <div className="border-t border-slate-100 my-1"></div>
+               <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2">
+                 <LogOut size={16} /> {isGuest ? 'Exit Guest Mode' : 'Sign Out'}
                </button>
              </div>
            )}
@@ -134,97 +128,85 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div className="flex-1 p-6 md:p-12 max-w-7xl mx-auto w-full">
         
         {/* Welcome Section */}
-        <div className="mb-10 relative">
-          <div className="flex flex-col md:flex-row justify-between items-end gap-4">
-            <div>
-              <h1 className="text-4xl font-extrabold text-slate-900 mb-2 tracking-tight">
-                Welcome back, <span className="bg-clip-text text-transparent bg-gradient-to-r from-brand-600 to-accent-500">{userEmail.split('@')[0]}</span> 👋
-              </h1>
-              <p className="text-slate-500 text-lg">
-                {isGuest 
-                  ? 'Ready to build something amazing? Your data is saved locally.' 
-                  : 'Manage your professional profile and create stunning resumes.'}
-              </p>
-            </div>
-            <div className="hidden md:block">
-               <p className="text-sm font-medium text-slate-400 bg-white/50 px-3 py-1 rounded-full backdrop-blur-sm border border-white/50">
-                 {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-               </p>
-            </div>
-          </div>
+        <div className="mb-10">
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">Welcome back, {userEmail.split('@')[0]} 👋</h1>
+          <p className="text-slate-500">
+            {isGuest 
+              ? 'You are in Guest Mode. Resumes are saved to this browser only.' 
+              : 'Manage your resumes or create a new one to get started.'}
+          </p>
         </div>
 
         {/* Action Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5 mb-14">
-           {/* Create New - Primary Action */}
-           <button onClick={onCreateNew} className="glass-card p-6 bg-gradient-to-br from-brand-600 to-brand-500 text-white rounded-2xl hover:brightness-110 flex flex-col items-center text-center gap-4 group border-0 shadow-brand-500/30">
-              <div className="bg-white/20 p-4 rounded-full group-hover:scale-110 transition-transform backdrop-blur-sm shadow-inner">
-                <Plus size={28} className="text-white" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-12">
+           <button onClick={onCreateNew} className="p-6 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex flex-col items-center text-center gap-3 group">
+              <div className="bg-white/20 p-3 rounded-full group-hover:scale-110 transition-transform">
+                <Plus size={24} />
               </div>
               <div>
-                <span className="block font-bold text-lg">Create New</span>
-                <span className="text-brand-100 text-sm opacity-90">Start from scratch</span>
+                <span className="block font-bold">Create New</span>
+                <span className="text-blue-100 text-xs">Start from scratch</span>
               </div>
            </button>
 
-           <button onClick={onImport} className="glass-card p-6 bg-white/80 rounded-2xl flex flex-col items-center text-center gap-4 group">
-              <div className="bg-emerald-100 p-4 rounded-full text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
-                <Upload size={28} />
+           <button onClick={onImport} className="p-6 bg-white border border-slate-200 text-slate-700 rounded-xl hover:border-emerald-500 hover:text-emerald-600 hover:shadow-md transition-all flex flex-col items-center text-center gap-3 group">
+              <div className="bg-emerald-50 p-3 rounded-full text-emerald-600 group-hover:scale-110 transition-transform">
+                <Upload size={24} />
               </div>
               <div>
-                <span className="block font-bold text-slate-800 text-lg group-hover:text-emerald-700 transition-colors">Import Text</span>
-                <span className="text-slate-500 text-sm">Paste content</span>
+                <span className="block font-bold">Import Resume</span>
+                <span className="text-slate-400 text-xs group-hover:text-emerald-500">From text</span>
               </div>
            </button>
 
-           <button onClick={onGenerate} className="glass-card p-6 bg-white/80 rounded-2xl flex flex-col items-center text-center gap-4 group">
-              <div className="bg-brand-100 p-4 rounded-full text-brand-600 group-hover:bg-brand-500 group-hover:text-white transition-all duration-300">
-                <Wand2 size={28} />
+           <button onClick={onGenerate} className="p-6 bg-white border border-slate-200 text-slate-700 rounded-xl hover:border-purple-500 hover:text-purple-600 hover:shadow-md transition-all flex flex-col items-center text-center gap-3 group">
+              <div className="bg-purple-50 p-3 rounded-full text-purple-600 group-hover:scale-110 transition-transform">
+                <Wand2 size={24} />
               </div>
               <div>
-                <span className="block font-bold text-slate-800 text-lg group-hover:text-brand-700 transition-colors">AI Generator</span>
-                <span className="text-slate-500 text-sm">By Job Role</span>
+                <span className="block font-bold">AI Generator</span>
+                <span className="text-slate-400 text-xs group-hover:text-purple-500">By Job Role</span>
               </div>
            </button>
 
-           <button onClick={onCoverLetter} className="glass-card p-6 bg-white/80 rounded-2xl flex flex-col items-center text-center gap-4 group">
-              <div className="bg-pink-100 p-4 rounded-full text-pink-600 group-hover:bg-pink-500 group-hover:text-white transition-all duration-300">
-                <FileSignature size={28} />
+           <button onClick={onCoverLetter} className="p-6 bg-white border border-slate-200 text-slate-700 rounded-xl hover:border-pink-500 hover:text-pink-600 hover:shadow-md transition-all flex flex-col items-center text-center gap-3 group">
+              <div className="bg-pink-50 p-3 rounded-full text-pink-600 group-hover:scale-110 transition-transform">
+                <FileSignature size={24} />
               </div>
               <div>
-                <span className="block font-bold text-slate-800 text-lg group-hover:text-pink-700 transition-colors">Cover Letter</span>
-                <span className="text-slate-500 text-sm">Tailored to Job</span>
+                <span className="block font-bold">Cover Letter</span>
+                <span className="text-slate-400 text-xs group-hover:text-pink-500">Tailored to Job</span>
               </div>
            </button>
 
-           <button onClick={onLoadSample} className="glass-card p-6 bg-white/80 rounded-2xl flex flex-col items-center text-center gap-4 group">
-              <div className="bg-amber-100 p-4 rounded-full text-amber-600 group-hover:bg-amber-500 group-hover:text-white transition-all duration-300">
-                <Layout size={28} />
+           <button onClick={onLoadSample} className="p-6 bg-white border border-slate-200 text-slate-700 rounded-xl hover:border-amber-500 hover:text-amber-600 hover:shadow-md transition-all flex flex-col items-center text-center gap-3 group">
+              <div className="bg-amber-50 p-3 rounded-full text-amber-600 group-hover:scale-110 transition-transform">
+                <Layout size={24} />
               </div>
               <div>
-                <span className="block font-bold text-slate-800 text-lg group-hover:text-amber-700 transition-colors">Templates</span>
-                <span className="text-slate-500 text-sm">View samples</span>
+                <span className="block font-bold">Templates</span>
+                <span className="text-slate-400 text-xs group-hover:text-amber-500">View samples</span>
               </div>
            </button>
         </div>
 
         {/* Saved Resumes List */}
         <div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-            <Clock size={24} className="text-brand-600" /> Recent Resumes
+          <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+            <Clock size={20} className="text-slate-400" /> Recent Resumes
           </h2>
           
           {loading ? (
-             <div className="text-center py-12">
-               <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-brand-600 mx-auto"></div>
+             <div className="text-center py-10">
+               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
              </div>
           ) : savedResumes.length === 0 ? (
-            <div className="glass-panel text-center py-20 rounded-2xl border-2 border-dashed border-slate-200">
-              <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100 shadow-inner">
-                <FileText className="text-slate-300" size={40} />
+            <div className="text-center py-16 bg-white rounded-2xl border border-slate-100 border-dashed">
+              <div className="bg-slate-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="text-slate-300" size={32} />
               </div>
-              <p className="text-slate-600 font-bold text-lg mb-1">No resumes found</p>
-              <p className="text-slate-400">Create your first resume above to get started!</p>
+              <p className="text-slate-500 font-medium">No resumes found</p>
+              <p className="text-slate-400 text-sm">Create your first resume above!</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -232,52 +214,31 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <div 
                   key={resume.id} 
                   onClick={() => onEditResume(resume)}
-                  className="glass-card bg-white p-6 rounded-2xl border border-slate-200 cursor-pointer group relative overflow-hidden"
+                  className="bg-white p-5 rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-lg transition-all cursor-pointer group relative"
                 >
-                  <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <div className="flex justify-between items-start mb-4">
+                     <div className="h-10 w-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
+                        <FileText size={20} />
+                     </div>
                      <button 
                         onClick={(e) => handleDelete(e, resume.id)}
-                        className="bg-white text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-full border border-slate-100 shadow-sm transition-all hover:scale-110"
-                        title="Delete Resume"
+                        className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors"
                      >
                         <Trash2 size={16} />
                      </button>
                   </div>
-
-                  <div className="flex items-start gap-4 mb-4">
-                     <div className="h-12 w-12 min-w-[3rem] bg-gradient-to-br from-blue-50 to-indigo-50 text-brand-600 rounded-xl flex items-center justify-center border border-blue-100 shadow-sm group-hover:scale-110 transition-transform duration-300">
-                        <FileText size={24} />
-                     </div>
-                     <div>
-                       <h3 className="font-bold text-slate-800 text-lg group-hover:text-brand-600 transition-colors line-clamp-1">
-                         {resume.name || 'Untitled Resume'}
-                       </h3>
-                       <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400"></span> Last updated just now
-                       </p>
-                     </div>
-                  </div>
                   
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center gap-2 text-sm text-slate-500">
-                      <User size={14} className="text-slate-400" /> 
-                      <span className="truncate">{resume.personalInfo.fullName || 'No Name'}</span>
-                    </div>
-                    {(resume.personalInfo.jobTitle) && (
-                      <div className="flex items-center gap-2 text-sm text-slate-500">
-                        <div className="w-3.5 flex justify-center"><div className="w-1.5 h-1.5 bg-slate-300 rounded-full"></div></div>
-                        <span className="truncate">{resume.personalInfo.jobTitle}</span>
-                      </div>
-                    )}
-                  </div>
+                  <h3 className="font-bold text-slate-800 mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
+                    {resume.name || 'Untitled Resume'}
+                  </h3>
+                  <p className="text-sm text-slate-500 mb-4 line-clamp-1">
+                    {resume.personalInfo.location || 'No location set'} • {resume.personalInfo.phone || 'No phone'}
+                  </p>
                   
-                  <div className="pt-4 border-t border-slate-100 flex justify-between items-center">
-                    <span className="text-xs font-medium text-slate-400 group-hover:text-brand-500 transition-colors flex items-center gap-1">
+                  <div className="flex items-center gap-2 pt-4 border-t border-slate-50">
+                    <span className="text-xs text-slate-400 flex items-center gap-1">
                       <Edit size={12} /> Click to edit
                     </span>
-                    <div className="h-1 w-12 bg-slate-100 rounded-full overflow-hidden">
-                       <div className="h-full bg-brand-500 w-0 group-hover:w-full transition-all duration-500"></div>
-                    </div>
                   </div>
                 </div>
               ))}
@@ -287,7 +248,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       </div>
 
-      <footer className="py-8 text-center text-slate-400 text-sm border-t border-slate-200/60 bg-white/60 backdrop-blur-sm mt-auto">
+      <footer className="py-8 text-center text-slate-400 text-sm border-t border-slate-200 bg-white mt-auto">
         ResumeAI © 2025. Built with Google Gemini.
       </footer>
     </div>

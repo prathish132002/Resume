@@ -91,7 +91,7 @@ const App: React.FC = () => {
   return (
     <div className="font-sans text-slate-900">
       {currentView === AppView.LOGIN && (
-        <Login onLogin={handleLoginSuccess} onGuestLogin={handleGuestLogin} />
+        <Login onLogin={handleLoginSuccess} />
       )}
 
       {currentView === AppView.DASHBOARD && (
@@ -112,7 +112,7 @@ const App: React.FC = () => {
       )}
       
       {currentView === AppView.PROFILE && (
-        <UserProfileView onBack={handleBackToDashboard} />
+        <UserProfileView isGuest={isGuest} onBack={handleBackToDashboard} />
       )}
       
       {currentView === AppView.IMPORT && (

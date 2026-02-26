@@ -3,12 +3,15 @@ import {
   createUserWithEmailAndPassword, 
   signOut, 
   updateProfile,
-  User
+  User,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { 
   collection, 
   doc, 
   setDoc, 
+  getDoc,
   getDocs, 
   deleteDoc, 
   query, 
@@ -16,10 +19,35 @@ import {
   orderBy
 } from 'firebase/firestore';
 import { auth, db } from './firebaseConfig';
-import { Resume } from '../types';
+import { Resume, UserProfile } from '../types';
 
 export const firebaseService = {
   // --- Auth Functions ---
+
+  async signInWithGoogle() {
+    try {
+      const provider = new GoogleAuthProvider();
+      const userCredential = await signInWithPopup(auth, provider);
+      const user = userCredential.user;
+      
+      // Create or update user profile in Firestore
+      const userRef = doc(db, 'users', user.uid);
+      const docSnap = await getDoc(userRef);
+      
+      if (!docSnap.exists()) {
+        await setDoc(userRef, {
+          id: user.uid,
+          email: user.email,
+          fullName: user.displayName || 'Google User',
+          createdAt: Date.now()
+        });
+      }
+      
+      return user;
+    } catch (error) {
+      throw error;
+    }
+  },
 
   async signUp(email: string, password: string, fullName: string) {
     try {
@@ -28,6 +56,15 @@ export const firebaseService = {
       if (userCredential.user) {
         await updateProfile(userCredential.user, {
           displayName: fullName
+        });
+        
+        // Create user profile in Firestore
+        const userRef = doc(db, 'users', userCredential.user.uid);
+        await setDoc(userRef, {
+          id: userCredential.user.uid,
+          email: email,
+          fullName: fullName,
+          createdAt: Date.now()
         });
       }
       return userCredential.user;
@@ -55,6 +92,51 @@ export const firebaseService = {
 
   getCurrentUser(): User | null {
     return auth.currentUser;
+  },
+
+  async getUserProfile(): Promise<UserProfile | null> {
+    const user = auth.currentUser;
+    if (!user) return null;
+
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      const docSnap = await getDoc(userRef);
+      
+      if (docSnap.exists()) {
+        return docSnap.data() as UserProfile;
+      } else {
+        // Fallback if document doesn't exist
+        return {
+          id: user.uid,
+          email: user.email || '',
+          fullName: user.displayName || '',
+          createdAt: Date.now()
+        };
+      }
+    } catch (error) {
+      console.error("Error fetching user profile: ", error);
+      return null;
+    }
+  },
+
+  async updateUserProfile(profile: UserProfile) {
+    const user = auth.currentUser;
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, profile, { merge: true });
+      
+      // Update auth profile if name changed
+      if (user.displayName !== profile.fullName) {
+        await updateProfile(user, {
+          displayName: profile.fullName
+        });
+      }
+    } catch (error) {
+      console.error("Error updating user profile: ", error);
+      throw error;
+    }
   },
 
   // --- Database Functions ---

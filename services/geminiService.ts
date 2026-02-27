@@ -1,6 +1,19 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const apiKey = process.env.API_KEY || ''; 
+// Support both AI Studio environment (process.env.API_KEY) and Vite/Vercel (import.meta.env.VITE_GEMINI_API_KEY)
+const getApiKey = () => {
+  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+    return process.env.API_KEY;
+  }
+  // @ts-ignore
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
+    // @ts-ignore
+    return import.meta.env.VITE_GEMINI_API_KEY;
+  }
+  return '';
+};
+
+const apiKey = getApiKey();
 
 const ai = new GoogleGenAI({ apiKey });
 

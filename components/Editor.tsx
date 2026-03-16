@@ -1,13 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Resume, TemplateType, Experience } from '../types';
 import { TEMPLATES } from '../constants';
 import ResumePreview from './ResumePreview';
 import { Button } from './ui/Button';
-import { Plus, Trash2, Wand2, ChevronDown, ChevronUp, Download, ArrowLeft, Save, X, Printer, Layout, Lightbulb, PlusCircle, History, Loader2, Scissors, FileText } from 'lucide-react';
+import { Plus, Trash2, Wand2, ChevronDown, ChevronUp, Download, ArrowLeft, Save, X, Layout, Lightbulb, PlusCircle, History, Loader2, Scissors, FileText } from 'lucide-react';
 import { generateSummary, improveDescription, getSkillSuggestions, fitResumeToOnePage, analyzeResumeFormATS, improveResumeWithAI } from '../services/geminiService';
 import { firebaseService } from '../services/firebaseService';
 import { storageService } from '../services/storageService';
 import HistoryModal from './HistoryModal';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface EditorProps {
   emailVerified: boolean;
@@ -49,6 +51,7 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
   };
   const [lastAtsCheckedHash, setLastAtsCheckedHash] = useState<string>('');
   const [lastAiImprovedHash, setLastAiImprovedHash] = useState<string>('');
+  const [lastSavedHash, setLastSavedHash] = useState<string>('');
 
   // Form Section State management (Collapsed/Expanded)
   const [expandedSection, setExpandedSection] = useState<string | null>('personal');
@@ -95,6 +98,7 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
     setIsSaving(true);
     try {
       await firebaseService.saveResume(resume);
+      setLastSavedHash(getResumeHash(resume));
       alert('Resume saved to your account!');
     } catch (error) {
       console.error('Failed to save resume:', error);
@@ -180,27 +184,126 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
     return (resume[field] || []).join(separator);
   }
 
-  const handlePrint = () => {
+  const componentRef = useRef<HTMLDivElement>(null);
+
+  const [isExporting, setIsExporting] = useState(false);
+  
+  const handleDownloadPDF = async () => {
+    if (!componentRef.current) return;
+
+    setIsExporting(true);
     setShowExportModal(false);
-    setTimeout(() => {
-      window.print();
-    }, 300);
+
+    // Must be in preview mode so element is visible
+    setViewMode('preview');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const element = componentRef.current;
+
+    // Save original styles
+    const originalTransform = element.style.transform;
+    const originalWidth = element.style.width;
+    const originalHeight = element.style.height;
+    const originalOverflow = element.style.overflow;
+
+    // Force full A4 size, no scaling, full height
+    element.style.transform = 'none';
+    element.style.width = '794px';
+    element.style.height = 'auto';
+    element.style.overflow = 'visible';
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    try {
+      const fullHeight = element.scrollHeight;
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        width: 794,
+        height: fullHeight,        // ✅ capture FULL height
+        windowWidth: 794,
+        windowHeight: fullHeight,  // ✅ no clipping
+        scrollX: 0,
+        scrollY: 0,
+      });
+
+      // Restore styles
+      element.style.transform = originalTransform;
+      element.style.width = originalWidth;
+      element.style.height = originalHeight;
+      element.style.overflow = originalOverflow;
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();   // 210mm
+      const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
+
+      const imgWidthPx = canvas.width / 2;    // undo scale:2
+      const imgHeightPx = canvas.height / 2;
+
+      const mmPerPx = pdfWidth / imgWidthPx;
+      const totalHeightMm = imgHeightPx * mmPerPx;
+
+      // Split into pages properly
+      let yPositionMm = 0;
+      let pageCount = 0;
+
+      while (yPositionMm < totalHeightMm) {
+        if (pageCount > 0) pdf.addPage();
+
+        pdf.addImage(
+          canvas.toDataURL('image/png'),
+          'PNG',
+          0,
+          -yPositionMm,   // shift image up as we go to next page
+          pdfWidth,
+          totalHeightMm
+        );
+
+        yPositionMm += pdfHeight;
+        pageCount++;
+      }
+
+      pdf.save(`${resume.personalInfo?.fullName || 'resume'}.pdf`);
+
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      alert('Failed to download PDF. Please try again.');
+
+      // Restore styles on error too
+      element.style.transform = originalTransform;
+      element.style.width = originalWidth;
+      element.style.height = originalHeight;
+      element.style.overflow = originalOverflow;
+    }
+
+    setIsExporting(false);
   };
 
   const resumeToText = (resume: Resume): string => {
     return `
       Name: ${resume.personalInfo.fullName}
-      Title: ${resume.personalInfo.location}
+      Title: ${resume.personalInfo.title || ''}
+      Summary: ${resume.personalInfo.summary || ''}
+      Email: ${resume.personalInfo.email || ''}
+      Phone: ${resume.personalInfo.phone || ''}
+      Location: ${resume.personalInfo.location || ''}
       Skills: ${resume.skills.join(', ')}
-      Experience: ${resume.experience.map(e => `${e.company} - ${e.role}: ${e.description}`).join('\n')}
-      Projects: ${resume.projects.map(p => `${p.name}: ${p.description}`).join('\n')}
-      Education: ${resume.education.map(e => `${e.institution} - ${e.degree}`).join('\n')}
+      Experience: ${resume.experience.map(e => `${e.company} - ${e.role} (${e.startDate} - ${e.endDate}): ${e.description}`).join('\n')}
+      Projects: ${resume.projects.map(p => `${p.name} (${p.technologies}): ${p.description}`).join('\n')}
+      Education: ${resume.education.map(e => `${e.institution} - ${e.degree} (${e.startDate} - ${e.endDate})`).join('\n')}
       Certifications: ${resume.certifications.join(', ')}
+      Achievements: ${resume.achievements.join(', ')}
     `;
   };
 
   // Initialize ATS state from resume if it exists
   React.useEffect(() => {
+    const initialHash = getResumeHash(resume);
+    setLastSavedHash(initialHash);
+
     if (resume.atsResult) {
       setAtsScore(resume.atsResult.score);
       setAtsMatchedKeywords(resume.atsResult.matchedKeywords);
@@ -211,7 +314,6 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
       setShowResults(true);
       
       // Initialize hashes so buttons are disabled until changes are made
-      const initialHash = getResumeHash(resume);
       setLastAtsCheckedHash(initialHash);
       setLastAiImprovedHash(initialHash);
     } else {
@@ -335,6 +437,7 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
       const newHash = getResumeHash(improvedResume);
       setLastAtsCheckedHash(newHash);
       setLastAiImprovedHash(newHash);
+      setViewMode('preview');
     }
   };
 
@@ -398,6 +501,7 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
                     icon={<Save size={14}/>} 
                     onClick={handleSaveResume}
                     isLoading={isSaving}
+                    disabled={getResumeHash(resume) === lastSavedHash}
                     className="flex-1 md:flex-none"
                     >
                     Save
@@ -824,8 +928,8 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
 
         {/* Live Preview Canvas */}
         <div className="flex-1 overflow-auto flex justify-center p-4 md:p-8 bg-slate-500 print:bg-white print:p-0 relative">
-          <div className="print:w-full">
-             <ResumePreview resume={improvedResume || resume} template={activeTemplate} scale={previewScale} />
+          <div className="print:w-full" ref={componentRef}>
+             <ResumePreview resume={improvedResume || resume} template={activeTemplate} scale={previewScale} isExporting={isExporting} />
           </div>
           
           {/* Floating Action Bar for Improved Resume */}
@@ -863,7 +967,7 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
           <div className="bg-white rounded-xl w-full max-w-2xl p-6 shadow-2xl">
             <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-2">
-                    <Printer className="text-slate-700" size={24} />
+                    <FileText className="text-slate-700" size={24} />
                     <h3 className="text-xl font-bold text-slate-800">Export PDF Options</h3>
                 </div>
                 <button onClick={() => setShowExportModal(false)} className="text-slate-400 hover:text-slate-600">
@@ -904,8 +1008,8 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
 
             <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
               <Button variant="ghost" onClick={() => setShowExportModal(false)}>Cancel</Button>
-              <Button onClick={handlePrint} icon={<Download size={18} />}>
-                Print / Save as PDF
+              <Button onClick={handleDownloadPDF} icon={<Download size={18} />}>
+                Download PDF
               </Button>
             </div>
           </div>

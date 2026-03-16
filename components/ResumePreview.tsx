@@ -6,10 +6,13 @@ interface ResumePreviewProps {
   resume: Resume;
   template: TemplateType;
   scale?: number;
+  isExporting?: boolean;
 }
 
-const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale = 1 }) => {
+const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale = 1, isExporting = false }) => {
   const { personalInfo, education, experience, projects, skills, certifications, achievements } = resume;
+  
+  const currentScale = isExporting ? 1 : scale;
 
   // ATS Classic Template - Strictly text based, no icons, standard hierarchy
   const AtsTemplate = () => (
@@ -455,9 +458,9 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
       style={{ 
         width: '210mm', 
         minHeight: '297mm', 
-        transform: `scale(${scale})`,
-        marginBottom: `${(297 * (scale - 1))}mm`, // Adjust for scale taking up less space flow-wise
-        marginRight: `${(210 * (scale - 1))}mm`
+        transform: `scale(${currentScale})`,
+        marginBottom: `${(297 * (currentScale - 1))}mm`, // Adjust for scale taking up less space flow-wise
+        marginRight: `${(210 * (currentScale - 1))}mm`
       }}
     >
       {template === TemplateType.ATS_CLASSIC && <AtsTemplate />}

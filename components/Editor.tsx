@@ -18,8 +18,6 @@ interface EditorProps {
 
 const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBack }) => {
   const [activeTemplate, setActiveTemplate] = useState<TemplateType>(TemplateType.ATS_CLASSIC);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [previewScale, setPreviewScale] = useState(0.8);
@@ -44,6 +42,14 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
   const [suggestedSkills, setSuggestedSkills] = useState<string[]>([]);
   const [isSuggestingSkills, setIsSuggestingSkills] = useState(false);
 
+  // Hash state to track changes
+  const getResumeHash = (r: Resume) => {
+    const { atsResult, ...rest } = r;
+    return JSON.stringify(rest);
+  };
+  const [lastAtsCheckedHash, setLastAtsCheckedHash] = useState<string>('');
+  const [lastAiImprovedHash, setLastAiImprovedHash] = useState<string>('');
+
   // Form Section State management (Collapsed/Expanded)
   const [expandedSection, setExpandedSection] = useState<string | null>('personal');
 
@@ -58,50 +64,6 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
       ...prev,
       personalInfo: { ...prev.personalInfo, [name]: value }
     }));
-  };
-
-  // AI Handlers
-  const handleGenerateSummary = async () => {
-    const jobTitle = resume.personalInfo.location; 
-    if (!jobTitle) {
-      alert("Please enter a job title first to generate a targeted summary.");
-      return;
-    }
-    setIsGeneratingSummary(true);
-    
-    const context = `
-      Target Job Title: ${jobTitle}
-      Experience: ${resume.experience.map(e => `${e.role} at ${e.company}: ${e.description}`).join('\n')}
-      Skills: ${resume.skills.join(', ')}
-      Education: ${resume.education.map(e => `${e.degree} at ${e.institution}`).join('\n')}
-    `;
-    
-    // Pass jobTitle explicitly to the service
-    const summary = await generateSummary(context, jobTitle);
-    setResume(prev => ({ ...prev, personalInfo: { ...prev.personalInfo, summary } }));
-    setIsGeneratingSummary(false);
-  };
-
-  const handleImproveExperience = async (id: string, text: string) => {
-    if(!text) return;
-    setIsGenerating(true);
-    const improved = await improveDescription(text, 'experience');
-    setResume(prev => ({
-      ...prev,
-      experience: prev.experience.map(e => e.id === id ? { ...e, description: improved } : e)
-    }));
-    setIsGenerating(false);
-  };
-
-  const handleImproveProject = async (id: string, text: string) => {
-    if(!text) return;
-    setIsGenerating(true);
-    const improved = await improveDescription(text, 'project');
-    setResume(prev => ({
-      ...prev,
-      projects: prev.projects.map(p => p.id === id ? { ...p, description: improved } : p)
-    }));
-    setIsGenerating(false);
   };
 
   const handleFitToOnePage = async () => {
@@ -237,11 +199,51 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
     `;
   };
 
+  // Initialize ATS state from resume if it exists
+  React.useEffect(() => {
+    if (resume.atsResult) {
+      setAtsScore(resume.atsResult.score);
+      setAtsMatchedKeywords(resume.atsResult.matchedKeywords);
+      setAtsMissingKeywords(resume.atsResult.missingKeywords);
+      setAtsWeakSections(resume.atsResult.weakSections);
+      setAtsSuggestion(resume.atsResult.suggestion);
+      setAtsScoreChecked(true);
+      setShowResults(true);
+      
+      // Initialize hashes so buttons are disabled until changes are made
+      const initialHash = getResumeHash(resume);
+      setLastAtsCheckedHash(initialHash);
+      setLastAiImprovedHash(initialHash);
+    } else {
+      setAtsScore(null);
+      setAtsMatchedKeywords([]);
+      setAtsMissingKeywords([]);
+      setAtsWeakSections([]);
+      setAtsSuggestion('');
+      setAtsScoreChecked(false);
+      setShowResults(false);
+    }
+  }, [resume.id]);
+
   const handleCheckATSScore = async () => {
     setIsCheckingATS(true);
     try {
       const resumeText = resumeToText(resume);
       const result = await analyzeResumeFormATS(resumeText);
+      
+      const atsResult = {
+        score: result.score,
+        matchedKeywords: result.matched_keywords,
+        missingKeywords: result.missing_keywords,
+        weakSections: result.weak_sections,
+        suggestion: result.suggestion,
+        timestamp: Date.now()
+      };
+
+      const updatedResume = { ...resume, atsResult };
+      setResume(updatedResume);
+      await firebaseService.saveResume(updatedResume);
+      
       setAtsScore(result.score);
       setAtsMatchedKeywords(result.matched_keywords);
       setAtsMissingKeywords(result.missing_keywords);
@@ -249,6 +251,7 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
       setAtsSuggestion(result.suggestion);
       setAtsScoreChecked(true);
       setShowResults(true);
+      setLastAtsCheckedHash(getResumeHash(updatedResume));
     } catch (e) {
       alert("Failed to check ATS score. Please try again.");
     } finally {
@@ -260,8 +263,26 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
     setIsImprovingWithAI(true);
     try {
       const resumeText = resumeToText(resume);
-      const improvedData = await improveResumeWithAI(resumeText);
+      console.log("Starting AI improvement and ATS analysis...");
+      const result = await improveResumeWithAI(resumeText);
+      console.log("AI improvement complete.");
       
+      const improvedData = result.improvedResume;
+      const atsData = result.atsAnalysis;
+
+      if (!improvedData || !atsData) {
+        throw new Error("Invalid response format from AI");
+      }
+      
+      const atsResult = {
+        score: atsData.score,
+        matchedKeywords: atsData.matched_keywords,
+        missingKeywords: atsData.missing_keywords,
+        weakSections: atsData.weak_sections,
+        suggestion: atsData.suggestion,
+        timestamp: Date.now()
+      };
+
       const newResume: Resume = {
         ...resume,
         personalInfo: {
@@ -287,17 +308,17 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
           id: resume.education[i]?.id || Math.random().toString(36).substr(2, 9)
         })) : resume.education,
         certifications: improvedData.certifications || resume.certifications,
+        atsResult: atsResult
       };
 
       setImprovedResume(newResume);
       
-      // Run ATS score automatically on the new content
-      const newResumeText = resumeToText(newResume);
-      const result = await analyzeResumeFormATS(newResumeText);
-      setImprovedAtsScore(result.score);
+      // Update ATS UI state
+      setImprovedAtsScore(atsResult.score);
       
       setViewMode('preview');
     } catch (e) {
+      console.error("Error in handleImproveWithAI:", e);
       alert("Failed to improve resume with AI. Please try again.");
     } finally {
       setIsImprovingWithAI(false);
@@ -310,7 +331,10 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
       setAtsScore(improvedAtsScore);
       setImprovedResume(null);
       setImprovedAtsScore(null);
-      setShowExportModal(true);
+      
+      const newHash = getResumeHash(improvedResume);
+      setLastAtsCheckedHash(newHash);
+      setLastAiImprovedHash(newHash);
     }
   };
 
@@ -412,40 +436,23 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
              
              {expandedSection === 'personal' && (
                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <input className="border p-2 rounded" placeholder="Full Name" name="fullName" value={resume.personalInfo.fullName} onChange={handlePersonalInfoChange} />
-                 <input className="border p-2 rounded" placeholder="Job Title (e.g. Software Engineer)" name="location" value={resume.personalInfo.location} onChange={handlePersonalInfoChange} />
-                 <input className="border p-2 rounded" placeholder="Email" name="email" value={resume.personalInfo.email} onChange={handlePersonalInfoChange} />
-                 <input className="border p-2 rounded" placeholder="Phone" name="phone" value={resume.personalInfo.phone} onChange={handlePersonalInfoChange} />
-                 <input className="border p-2 rounded" placeholder="LinkedIn URL" name="linkedin" value={resume.personalInfo.linkedin} onChange={handlePersonalInfoChange} />
-                 <input className="border p-2 rounded" placeholder="Portfolio URL" name="portfolio" value={resume.personalInfo.portfolio} onChange={handlePersonalInfoChange} />
+                 <input className="border p-2 rounded" placeholder="Full Name" name="fullName" value={resume.personalInfo.fullName || ''} onChange={handlePersonalInfoChange} />
+                 <input className="border p-2 rounded" placeholder="Job Title (e.g. Software Engineer)" name="location" value={resume.personalInfo.location || ''} onChange={handlePersonalInfoChange} />
+                 <input className="border p-2 rounded" placeholder="Email" name="email" value={resume.personalInfo.email || ''} onChange={handlePersonalInfoChange} />
+                 <input className="border p-2 rounded" placeholder="Phone" name="phone" value={resume.personalInfo.phone || ''} onChange={handlePersonalInfoChange} />
+                 <input className="border p-2 rounded" placeholder="LinkedIn URL" name="linkedin" value={resume.personalInfo.linkedin || ''} onChange={handlePersonalInfoChange} />
+                 <input className="border p-2 rounded" placeholder="Portfolio URL" name="portfolio" value={resume.personalInfo.portfolio || ''} onChange={handlePersonalInfoChange} />
                  <input className="border p-2 rounded" placeholder="GitHub URL" name="githubUrl" value={resume.personalInfo.githubUrl || ''} onChange={handlePersonalInfoChange} />
-                 <div className="col-span-full">
+                  <div className="col-span-full">
                     <div className="flex justify-between mb-1">
                       <label className="text-sm text-slate-600">Professional Summary</label>
-                      <button 
-                        onClick={handleGenerateSummary} 
-                        disabled={isGeneratingSummary || !emailVerified} 
-                        className="text-xs flex items-center text-blue-600 hover:text-blue-800 disabled:opacity-50"
-                        title={!emailVerified ? "Verify email to use AI features" : ""}
-                      >
-                         {isGeneratingSummary ? (
-                           <>
-                             <Loader2 size={12} className="mr-1 animate-spin" /> Generating...
-                           </>
-                         ) : (
-                           <>
-                             <Wand2 size={12} className="mr-1"/> Generate based on Job Title
-                           </>
-                         )}
-                      </button>
                     </div>
                     <textarea 
-                      className="w-full border p-2 rounded h-24 text-sm disabled:opacity-50" 
+                      className="w-full border p-2 rounded h-24 text-sm" 
                       placeholder="Brief overview of your career..." 
                       name="summary" 
                       value={resume.personalInfo.summary} 
                       onChange={handlePersonalInfoChange} 
-                      disabled={isGeneratingSummary}
                       maxLength={1000}
                     />
                     <div className="text-right text-[10px] text-slate-400">
@@ -487,14 +494,6 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
                         <div className="text-right text-[10px] text-slate-400 mb-1">
                           {exp.description.length} / 1500
                         </div>
-                         <button 
-                            onClick={() => handleImproveExperience(exp.id, exp.description)} 
-                            disabled={isGenerating || !exp.description || !emailVerified}
-                            className="absolute bottom-2 right-2 text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded border border-indigo-100 flex items-center gap-1 hover:bg-indigo-100 disabled:opacity-50"
-                            title={!emailVerified ? "Verify email to use AI features" : ""}
-                          >
-                           <Wand2 size={10}/> Improve
-                         </button>
                       </div>
                    </div>
                  ))}
@@ -567,14 +566,6 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
                           <div className="text-right text-[10px] text-slate-400 mb-1">
                             {proj.description.length} / 1500
                           </div>
-                          <button 
-                              onClick={() => handleImproveProject(proj.id, proj.description)} 
-                              disabled={isGenerating || !proj.description || !emailVerified}
-                              className="absolute bottom-2 right-2 text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded border border-indigo-100 flex items-center gap-1 hover:bg-indigo-100 disabled:opacity-50"
-                              title={!emailVerified ? "Verify email to use AI features" : ""}
-                            >
-                             <Wand2 size={10}/> Improve
-                          </button>
                         </div>
                       </div>
                    </div>
@@ -703,6 +694,7 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
                  size="sm" 
                  onClick={handleCheckATSScore}
                  isLoading={isCheckingATS}
+                 disabled={!!improvedResume || getResumeHash(resume) === lastAtsCheckedHash}
                  className="flex-1"
                >
                  Check ATS Score
@@ -712,7 +704,7 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
                  size="sm" 
                  onClick={handleImproveWithAI}
                  isLoading={isImprovingWithAI}
-                 disabled={!atsScoreChecked}
+                 disabled={!atsScoreChecked || !!improvedResume || getResumeHash(resume) === lastAiImprovedHash}
                  className="flex-1"
                >
                  Improve with AI
@@ -786,7 +778,7 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
                          onClick={handleAcceptImproved}
                          className="flex-1"
                        >
-                         Accept & Export
+                         Accept Changes
                        </Button>
                        <Button 
                          variant="outline" 
@@ -831,10 +823,25 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
         </div>
 
         {/* Live Preview Canvas */}
-        <div className="flex-1 overflow-auto flex justify-center p-4 md:p-8 bg-slate-500 print:bg-white print:p-0">
+        <div className="flex-1 overflow-auto flex justify-center p-4 md:p-8 bg-slate-500 print:bg-white print:p-0 relative">
           <div className="print:w-full">
              <ResumePreview resume={improvedResume || resume} template={activeTemplate} scale={previewScale} />
           </div>
+          
+          {/* Floating Action Bar for Improved Resume */}
+          {improvedResume && (
+            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-white rounded-full shadow-2xl border border-slate-200 p-2 flex items-center gap-4 z-30">
+              <div className="px-4 text-sm font-bold text-slate-700 hidden sm:block">
+                AI Improved Resume (Score: {improvedAtsScore})
+              </div>
+              <Button size="sm" variant="primary" onClick={handleAcceptImproved}>
+                Accept Changes
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => { setImprovedResume(null); setImprovedAtsScore(null); setViewMode('edit'); }}>
+                Discard
+              </Button>
+            </div>
+          )}
         </div>
       </div>
 

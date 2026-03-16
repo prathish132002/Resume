@@ -8,6 +8,16 @@ export interface Resume {
   skills: string[];
   certifications: string[];
   achievements: string[];
+  atsResult?: ATSResult;
+}
+
+export interface ATSResult {
+  score: number;
+  matchedKeywords: string[];
+  missingKeywords: string[];
+  weakSections: string[];
+  suggestion: string;
+  timestamp: number;
 }
 
 export interface PersonalInfo {

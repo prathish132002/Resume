@@ -19,10 +19,25 @@ const apiKey = getApiKey();
 const ai = new GoogleGenAI({ apiKey });
 
 // Simple in-memory cache for deterministic AI requests
-const aiCache = new Map<string, string>();
+const CACHE_KEY = 'resumeForge_ai_cache';
+const loadCache = (): Map<string, string> => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      return new Map(JSON.parse(cached));
+    }
+  } catch (e) {
+    console.error("Failed to load AI cache", e);
+  }
+  return new Map();
+};
+const aiCache = loadCache();
+
+// Helper for exponential backoff
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Centralized wrapper function
-const callGeminiAPI = async (functionName: string, params: GenerateContentParameters, useCache: boolean = true): Promise<string> => {
+const callGeminiAPI = async (functionName: string, params: GenerateContentParameters, useCache: boolean = true, retryCount = 0): Promise<string> => {
   const promptText = typeof params.contents === 'string' 
     ? params.contents 
     : JSON.stringify(params.contents);
@@ -36,37 +51,49 @@ const callGeminiAPI = async (functionName: string, params: GenerateContentParame
     return aiCache.get(cacheKey)!;
   }
 
-  // 1. Check rate limits before API call
-  await checkRateLimitAndUsage();
+  try {
+    // 1. Check rate limits before API call
+    await checkRateLimitAndUsage();
 
-  // 2. Make the API call
-  const mergedParams: GenerateContentParameters = {
-    ...params,
-    config: {
-      ...params.config,
-      maxOutputTokens: 1400,
+    // 2. Make the API call
+    const mergedParams: GenerateContentParameters = {
+      ...params,
+      config: {
+        ...params.config,
+      }
+    };
+
+    const response = await ai.models.generateContent(mergedParams);
+    const responseText = response.text || "";
+
+    // 3. Update usage tracking after API call
+    await trackAIUsage(functionName, mergedParams.model, promptText, responseText);
+
+    // 4. Save to cache
+    if (useCache && responseText) {
+      aiCache.set(cacheKey, responseText);
       
+      // Prevent cache from growing infinitely (simple LRU-ish behavior)
+      if (aiCache.size > 50) {
+        const firstKey = aiCache.keys().next().value;
+        if (firstKey) aiCache.delete(firstKey);
+      }
+
+      // Persist to localStorage
+      localStorage.setItem(CACHE_KEY, JSON.stringify(Array.from(aiCache.entries())));
     }
-  };
 
-  const response = await ai.models.generateContent(mergedParams);
-  const responseText = response.text || "";
-
-  // 3. Update usage tracking after API call
-  await trackAIUsage(functionName, mergedParams.model, promptText, responseText);
-
-  // 4. Save to cache
-  if (useCache && responseText) {
-    aiCache.set(cacheKey, responseText);
-    
-    // Prevent cache from growing infinitely (simple LRU-ish behavior)
-    if (aiCache.size > 50) {
-      const firstKey = aiCache.keys().next().value;
-      if (firstKey) aiCache.delete(firstKey);
+    return responseText;
+  } catch (error: any) {
+    // Handle rate limit error
+    if (error.message && error.message.includes("Please wait before making another request") && retryCount < 3) {
+      const delay = Math.pow(2, retryCount) * 1000;
+      console.warn(`[Rate Limit] Retrying ${functionName} in ${delay}ms... (Attempt ${retryCount + 1})`);
+      await sleep(delay);
+      return callGeminiAPI(functionName, params, useCache, retryCount + 1);
     }
+    throw error;
   }
-
-  return responseText;
 };
 
 export const generateSummary = async (resumeContext: string, jobRole?: string): Promise<string> => {
@@ -524,7 +551,7 @@ Candidate Details:
 ${resumeText}`;
 
     const responseText = await callGeminiAPI('analyzeResumeFormATS', {
-      model: 'gemini-flash-lite-latest',
+      model: 'gemini-3.1-pro-preview',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -548,29 +575,40 @@ resume content to maximize ATS score.
 STRICT RULES:
 - Do NOT invent, add, or assume any information not given below
 - Do NOT add fake metrics or companies
+- Do NOT add any new technologies, skills, or tools to the projects or skills list that are not explicitly mentioned in the input.
 - Only enhance the language, structure, and keyword usage
 - Use strong action verbs for experience and projects
+- Provide an ATS analysis based on the IMPROVED resume.
 - Return the result as JSON only, no extra text:
 {
-  "name": "<name>",
-  "title": "<optimized title>",
-  "summary": "<strong 3 line professional summary>",
-  "skills": ["<optimized skills list>"],
-  "experience": [{"company": "<company>", "role": "<role>", "startDate": "<startDate>", "endDate": "<endDate>", "description": "<rewritten experience with strong action verbs>"}],
-  "projects": [{"name": "<name>", "technologies": "<technologies>", "description": "<rewritten projects with impact focus>"}],
-  "education": [{"institution": "<institution>", "degree": "<degree>", "startDate": "<startDate>", "endDate": "<endDate>"}],
-  "certifications": ["<certifications as is>"]
+  "improvedResume": {
+    "name": "<name>",
+    "title": "<optimized title>",
+    "summary": "<strong 3 line professional summary>",
+    "skills": ["<optimized skills list>"],
+    "experience": [{"company": "<company>", "role": "<role>", "startDate": "<startDate>", "endDate": "<endDate>", "description": "<rewritten experience with strong action verbs>"}],
+    "projects": [{"name": "<name>", "technologies": "<technologies>", "description": "<rewritten projects with impact focus>"}],
+    "education": [{"institution": "<institution>", "degree": "<degree>", "startDate": "<startDate>", "endDate": "<endDate>"}],
+    "certifications": ["<certifications as is>"]
+  },
+  "atsAnalysis": {
+    "score": <number 0-100>,
+    "matched_keywords": ["<list of strong keywords found>"],
+    "missing_keywords": ["<list of important missing keywords>"],
+    "weak_sections": ["<list of sections that need improvement>"],
+    "suggestion": "<one line tip to improve>"
+  }
 }
 
 Candidate Details:
 ${resumeText}`;
 
     const responseText = await callGeminiAPI('improveResumeWithAI', {
-      model: 'gemini-flash-lite-latest',
+      model: 'gemini-3.1-pro-preview',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
-        temperature: 0.5
+        temperature: 0.7
       }
     });
 

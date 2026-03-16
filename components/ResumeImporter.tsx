@@ -95,8 +95,8 @@ const ResumeImporter: React.FC<ResumeImporterProps> = ({ onImport, onBack }) => 
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-2xl bg-white rounded-xl shadow-xl p-8">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 md:p-6">
+      <div className="w-full max-w-2xl bg-white rounded-xl shadow-xl p-5 md:p-8">
         
         <div className="flex items-center gap-4 mb-6">
           <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
@@ -122,7 +122,11 @@ const ResumeImporter: React.FC<ResumeImporterProps> = ({ onImport, onBack }) => 
                 placeholder="Paste your full resume content here (text from PDF or Word)..."
                 value={text}
                 onChange={(e) => setText(e.target.value)}
+                maxLength={3000}
               />
+              <div className="text-right text-xs text-slate-400 mt-1">
+                {text.length} / 3000
+              </div>
               {error && (
                 <div className="mt-2 text-red-600 text-sm flex items-center gap-2">
                   <AlertCircle size={14} /> {error}

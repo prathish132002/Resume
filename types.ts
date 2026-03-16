@@ -16,6 +16,7 @@ export interface PersonalInfo {
   phone: string;
   linkedin: string;
   portfolio: string;
+  githubUrl?: string;
   location: string;
   summary: string;
 }
@@ -54,6 +55,8 @@ export enum AppView {
   ROLE_GENERATOR = 'ROLE_GENERATOR',
   PROFILE = 'PROFILE',
   COVER_LETTER = 'COVER_LETTER',
+  ADMIN_DASHBOARD = 'ADMIN_DASHBOARD',
+  ATS_SCORE = 'ATS_SCORE',
 }
 
 export enum TemplateType {
@@ -76,6 +79,8 @@ export interface UserProfile {
   jobTitle?: string;
   avatar?: string;
   createdAt: number;
+  role?: 'admin' | 'user';
+  plan?: 'free' | 'pro';
 }
 
 export interface ResumeVersion {

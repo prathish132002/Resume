@@ -6,27 +6,23 @@ import { Button } from './ui/Button';
 import { ArrowLeft, User, Briefcase, Save, Check, Mail } from 'lucide-react';
 
 interface UserProfileProps {
-  isGuest: boolean;
   onBack: () => void;
 }
 
-const UserProfileView: React.FC<UserProfileProps> = ({ isGuest, onBack }) => {
+const UserProfileView: React.FC<UserProfileProps> = ({ onBack }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ fullName: '', email: '', jobTitle: '' });
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [emailChangeSent, setEmailChangeSent] = useState(false);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProfile = async () => {
       setLoading(true);
       try {
-        let user: UserProfile | null = null;
-        if (isGuest) {
-          user = storageService.getCurrentUser();
-        } else {
-          user = await firebaseService.getUserProfile();
-        }
+        const user = await firebaseService.getUserProfile();
         
         if (user) {
           setProfile(user);
@@ -44,31 +40,53 @@ const UserProfileView: React.FC<UserProfileProps> = ({ isGuest, onBack }) => {
     };
     
     fetchProfile();
-  }, [isGuest]);
+  }, []);
 
   const handleSave = async () => {
     if (!profile) return;
+    setError('');
+    setEmailChangeSent(false);
     
+    const emailChanged = formData.email !== profile.email;
+
     const updatedProfile: UserProfile = {
       ...profile,
       fullName: formData.fullName,
-      email: formData.email,
+      // We don't update the email in the profile object immediately if it changed,
+      // because it needs verification first.
+      email: emailChanged ? profile.email : formData.email,
       jobTitle: formData.jobTitle
     };
 
     try {
-      if (isGuest) {
-        storageService.updateProfile(updatedProfile);
-      } else {
-        await firebaseService.updateUserProfile(updatedProfile);
+      // Firebase mode
+      if (emailChanged) {
+        try {
+          await firebaseService.updateEmailAddress(formData.email);
+          setEmailChangeSent(true);
+        } catch (err: any) {
+          console.error("Error updating email:", err);
+          if (err.code === 'auth/requires-recent-login') {
+            setError("Changing your email requires a recent login. Please log out and log back in, then try again.");
+            return; // Stop the save process if email update fails due to auth
+          } else {
+            setError(err.message || "Failed to initiate email change.");
+            return;
+          }
+        }
       }
+
+      await firebaseService.updateUserProfile(updatedProfile);
       setProfile(updatedProfile);
-      setIsEditing(false);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2000);
+      
+      if (!emailChanged) {
+        setIsEditing(false);
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
+      }
     } catch (error) {
       console.error("Error saving profile:", error);
-      alert("Failed to save profile");
+      setError("Failed to save profile");
     }
   };
 
@@ -108,6 +126,17 @@ const UserProfileView: React.FC<UserProfileProps> = ({ isGuest, onBack }) => {
 
             {isEditing ? (
               <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                {error && (
+                  <div className="p-3 bg-red-50 text-red-600 rounded text-sm mb-4">
+                    {error}
+                  </div>
+                )}
+                {emailChangeSent && (
+                  <div className="p-3 bg-amber-50 text-amber-700 rounded text-sm mb-4 border border-amber-200">
+                    <strong>Verification Required:</strong> A verification link has been sent to <strong>{formData.email}</strong>. 
+                    Your email address will not be updated until you click the link.
+                  </div>
+                )}
                 <div>
                    <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
                    <div className="relative">
@@ -145,7 +174,16 @@ const UserProfileView: React.FC<UserProfileProps> = ({ isGuest, onBack }) => {
                    <p className="text-xs text-slate-400 mt-1">This will be used when generating new resumes.</p>
                 </div>
                 <div className="flex gap-2 justify-end pt-2">
-                  <Button variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
+                  <Button variant="ghost" onClick={() => {
+                    setIsEditing(false);
+                    setError('');
+                    setEmailChangeSent(false);
+                    setFormData({
+                      fullName: profile.fullName,
+                      email: profile.email,
+                      jobTitle: profile.jobTitle || ''
+                    });
+                  }}>Cancel</Button>
                   <Button onClick={handleSave} icon={<Save size={16} />}>Save Changes</Button>
                 </div>
               </div>

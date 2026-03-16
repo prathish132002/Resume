@@ -1,4 +1,5 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, GenerateContentParameters } from "@google/genai";
+import { checkRateLimitAndUsage, trackAIUsage } from "./aiTrackingService";
 
 // Support both AI Studio environment (process.env.API_KEY) and Vite/Vercel (import.meta.env.VITE_GEMINI_API_KEY)
 const getApiKey = () => {
@@ -17,36 +18,94 @@ const apiKey = getApiKey();
 
 const ai = new GoogleGenAI({ apiKey });
 
+// Simple in-memory cache for deterministic AI requests
+const aiCache = new Map<string, string>();
+
+// Centralized wrapper function
+const callGeminiAPI = async (functionName: string, params: GenerateContentParameters, useCache: boolean = true): Promise<string> => {
+  const promptText = typeof params.contents === 'string' 
+    ? params.contents 
+    : JSON.stringify(params.contents);
+
+  // Generate a cache key based on function name and prompt
+  const cacheKey = `${functionName}_${promptText}`;
+
+  // Check cache first
+  if (useCache && aiCache.has(cacheKey)) {
+    console.log(`[Cache Hit] Returning cached result for ${functionName}`);
+    return aiCache.get(cacheKey)!;
+  }
+
+  // 1. Check rate limits before API call
+  await checkRateLimitAndUsage();
+
+  // 2. Make the API call
+  const mergedParams: GenerateContentParameters = {
+    ...params,
+    config: {
+      ...params.config,
+      maxOutputTokens: 1400,
+      
+    }
+  };
+
+  const response = await ai.models.generateContent(mergedParams);
+  const responseText = response.text || "";
+
+  // 3. Update usage tracking after API call
+  await trackAIUsage(functionName, mergedParams.model, promptText, responseText);
+
+  // 4. Save to cache
+  if (useCache && responseText) {
+    aiCache.set(cacheKey, responseText);
+    
+    // Prevent cache from growing infinitely (simple LRU-ish behavior)
+    if (aiCache.size > 50) {
+      const firstKey = aiCache.keys().next().value;
+      if (firstKey) aiCache.delete(firstKey);
+    }
+  }
+
+  return responseText;
+};
+
 export const generateSummary = async (resumeContext: string, jobRole?: string): Promise<string> => {
   try {
     const prompt = `
-      You are an expert career coach. Write a professional resume summary (3-4 sentences) for a candidate.
-      
-      Candidate Context: ${resumeContext}
-      
+      You are a senior resume strategist specializing in ATS-optimized summaries for competitive tech roles.
+
+      Write a concise, high-impact professional resume summary (3–4 sentences).
+
+      Candidate Context:
+      ${resumeContext}
+
       ${jobRole ? `Target Job Role: ${jobRole}` : ''}
-      
-      Rules:
-      1. The summary must be ATS-friendly and impactful.
-      2. Highlight key strengths based ONLY on the provided context.
-      3. Do NOT invent experiences, skills, or numbers not mentioned in the context.
-      4. If a Target Job Role is provided, align the summary to that role using existing facts.
-      
-      Return ONLY the summary text, no explanations.
+
+      STRICT RULES:
+      1. Start directly with the candidate’s job title.
+      2. Do NOT use first-person language.
+      3. Do NOT use generic phrases such as "hardworking individual", "strong foundation", or "results-driven professional" unless clearly supported by measurable context.
+      4. Highlight technical expertise, specialization, and value delivered.
+      5. If measurable achievements are present, incorporate them naturally.
+      6. If a Target Job Role is provided, subtly align wording with its responsibilities and keywords without inventing new skills.
+      7. Use confident, precise language and avoid passive voice.
+      8. Do NOT fabricate experiences, metrics, tools, or certifications.
+
+      Return ONLY the final summary text.
     `;
 
-    const response = await ai.models.generateContent({
+    const responseText = await callGeminiAPI('generateSummary', {
       model: 'gemini-flash-lite-latest',
       contents: prompt,
       config: {
         thinkingConfig: { thinkingBudget: 0 }
       }
-    });
+    }, true); // Use cache
 
-    return response.text || "Could not generate summary.";
+    return responseText || "Could not generate summary.";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "Error generating summary. Please check your API key.";
+    throw error;
   }
 };
 
@@ -68,18 +127,19 @@ export const improveDescription = async (text: string, type: 'experience' | 'pro
       Return ONLY the improved text as bullet points (if applicable) or a paragraph. Do not add conversational filler.
     `;
 
-    const response = await ai.models.generateContent({
+    const responseText = await callGeminiAPI('improveDescription', {
       model: 'gemini-flash-lite-latest',
       contents: prompt,
       config: {
-        thinkingConfig: { thinkingBudget: 0 }
+        thinkingConfig: { thinkingBudget: 0 },
+        temperature: 0.4
       }
-    });
+    }, true); // Use cache
 
-    return response.text || text;
+    return responseText || text;
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return text; // Fallback to original
+    throw error;
   }
 };
 
@@ -110,32 +170,34 @@ export const tailorResumeToJob = async (currentResumeJSON: string, jobDescriptio
       Do NOT wrap in markdown code blocks. Just the raw JSON string.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+    const responseText = await callGeminiAPI('tailorResumeToJob', {
+      model: 'gemini-flash-lite-latest',
       contents: prompt,
       config: {
-        responseMimeType: 'application/json'
+        responseMimeType: 'application/json',
+        temperature: 0.6
       }
-    });
+    }, false); // Do not cache tailoring, as users might want different results or tweak JD slightly
 
-    return response.text || "";
+    return responseText || "";
   } catch (error) {
     console.error("Gemini API Error:", error);
     throw error;
   }
 };
 
-export const transformResumeForRole = async (currentResumeJSON: string, targetRole: string): Promise<string> => {
+export const transformResumeForRole = async (currentResumeJSON: string, targetRole: string, jobDescription?: string): Promise<string> => {
   try {
     const prompt = `
       You are an expert Resume Strategist.
       I have a parsed resume (JSON) and a Target Job Role: "${targetRole}".
+      ${jobDescription ? `\nHere is the Job Description / Requirements:\n"""\n${jobDescription}\n"""\n` : ''}
       
-      Your Goal: Rewrite the resume content to position the candidate as a strong fit for this role, using ONLY their existing experience.
+      Your Goal: Rewrite the resume content to position the candidate as a strong fit for this role${jobDescription ? ' and the provided job description' : ''}, using ONLY their existing experience.
 
       STRICT RULES:
-      1. Rewrite the "Summary" to highlight experience relevant to ${targetRole}.
-      2. Update "Experience" bullet points to emphasize skills valued in ${targetRole} (e.g. leadership, technical depth, communication) depending on the role.
+      1. Rewrite the "Summary" to highlight experience relevant to ${targetRole}${jobDescription ? ' and the job description' : ''}.
+      2. Update "Experience" bullet points to emphasize skills valued in ${targetRole}${jobDescription ? ' and match keywords from the job description' : ''} (e.g. leadership, technical depth, communication) depending on the role.
       3. Re-order "Skills" to put the most relevant ones first.
       4. DO NOT invent new facts. If the candidate lacks experience, do not fake it. Just present what they have in the best light.
       5. Ensure the "Job Title" in Personal Info matches the target role (or is "Aspiring ${targetRole}" if they are junior).
@@ -146,15 +208,52 @@ export const transformResumeForRole = async (currentResumeJSON: string, targetRo
       Return the output strictly as a valid JSON object matching the schema.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+    const responseText = await callGeminiAPI('transformResumeForRole', {
+      model: 'gemini-flash-lite-latest',
       contents: prompt,
       config: {
-        responseMimeType: 'application/json'
+        responseMimeType: 'application/json',
+        temperature: 0.5
       }
     });
 
-    return response.text || "";
+    return responseText || "";
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    throw error;
+  }
+};
+
+export const fitResumeToOnePage = async (currentResumeJSON: string): Promise<string> => {
+  try {
+    const prompt = `
+      You are an expert resume writer and formatter. The following resume is slightly too long and spills over to a second page.
+      Your task is to intelligently trim the content to make it fit on a single page.
+      
+      Guidelines:
+      1. Make sentences more concise and punchy. Remove "fluff" words.
+      2. Combine redundant bullet points in the experience and project sections.
+      3. Preserve all high-impact metrics, numbers, and key achievements.
+      4. Do NOT remove entire jobs, projects, or education entries. Only shorten their descriptions.
+      5. Keep the professional summary under 3 sentences.
+      
+      Return the updated resume in the EXACT same JSON structure as the input.
+      Do not add any markdown formatting like \`\`\`json, just return the raw JSON object.
+      
+      Input Resume JSON:
+      ${currentResumeJSON}
+    `;
+
+    const responseText = await callGeminiAPI('fitResumeToOnePage', {
+      model: 'gemini-flash-lite-latest',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json'
+        
+      }
+    });
+
+    return responseText || "";
   } catch (error) {
     console.error("Gemini API Error:", error);
     throw error;
@@ -180,6 +279,7 @@ export const parseResumeContent = async (text: string): Promise<string> => {
           "phone": "Extract phone number",
           "linkedin": "Extract LinkedIn URL",
           "portfolio": "Extract Portfolio/Website URL",
+          "githubUrl": "Extract GitHub URL",
           "location": "Extract City, State/Country",
           "summary": "Extract professional summary/objective"
         },
@@ -227,7 +327,7 @@ export const parseResumeContent = async (text: string): Promise<string> => {
       7. **Output:** Return **ONLY** the raw JSON object. Do not wrap in markdown code blocks.
     `;
 
-    const response = await ai.models.generateContent({
+    const responseText = await callGeminiAPI('parseResumeContent', {
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
@@ -235,17 +335,18 @@ export const parseResumeContent = async (text: string): Promise<string> => {
       }
     });
 
-    return response.text || "{}";
+    return responseText || "{}";
   } catch (error) {
     console.error("Gemini API Error:", error);
     throw error;
   }
 };
 
-export const generateResumeByRole = async (role: string, level: string): Promise<string> => {
+export const generateResumeByRole = async (role: string, level: string, jobDescription?: string): Promise<string> => {
   try {
     const prompt = `
       You are an expert Resume Writer. Generate a realistic, high-quality sample resume for a ${level} ${role}.
+      ${jobDescription ? `\nHere is the Job Description to tailor the resume to:\n"""\n${jobDescription}\n"""\nMake sure the generated resume highlights skills and experiences relevant to these requirements.` : ''}
       
       The resume should include:
       - A strong professional summary.
@@ -257,7 +358,7 @@ export const generateResumeByRole = async (role: string, level: string): Promise
 
       Output Structure (JSON):
       {
-        "personalInfo": { "fullName": "[Placeholder Name]", "email": "email@example.com", "phone": "123-456-7890", "linkedin": "linkedin.com/in/candidate", "portfolio": "", "location": "City, Country", "summary": "..." },
+        "personalInfo": { "fullName": "[Placeholder Name]", "email": "email@example.com", "phone": "123-456-7890", "linkedin": "linkedin.com/in/candidate", "portfolio": "", "githubUrl": "", "location": "City, Country", "summary": "..." },
         "education": [{ "id": "generated-id-1", "institution": "University Name", "degree": "Degree Name", "startDate": "YYYY", "endDate": "YYYY", "gpa": "3.X" }],
         "experience": [{ "id": "generated-id-2", "company": "Tech Corp", "role": "${role}", "startDate": "YYYY", "endDate": "Present", "description": "..." }],
         "projects": [{ "id": "generated-id-3", "name": "Project Name", "technologies": "Tech Stack", "link": "", "description": "..." }],
@@ -269,15 +370,16 @@ export const generateResumeByRole = async (role: string, level: string): Promise
       Return ONLY valid JSON.
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+    const responseText = await callGeminiAPI('generateResumeByRole', {
+      model: 'gemini-flash-lite-latest',
       contents: prompt,
       config: {
-        responseMimeType: 'application/json'
+        responseMimeType: 'application/json',
+        temperature: 0.6
       }
     });
 
-    return response.text || "{}";
+    return responseText || "{}";
   } catch (error) {
     console.error("Gemini API Error:", error);
     throw error;
@@ -302,18 +404,19 @@ export const getSkillSuggestions = async (jobTitle: string, currentSkills: strin
          return ["Communication", "Leadership", "Problem Solving", "Teamwork", "Time Management", "Critical Thinking"];
     }
 
-    const response = await ai.models.generateContent({
+    const responseText = await callGeminiAPI('getSkillSuggestions', {
       model: 'gemini-flash-lite-latest',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
+        temperature: 0.6
       }
-    });
+    }, true); // Use cache
 
-    return JSON.parse(response.text || "[]");
+    return JSON.parse(responseText || "[]");
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return [];
+    throw error;
   }
 };
 
@@ -321,7 +424,8 @@ export const generateCoverLetter = async (
   resumeContext: string,
   companyName: string,
   jobRole: string,
-  hiringManager: string = "Hiring Manager"
+  hiringManager: string = "Hiring Manager",
+  jobDescription?: string
 ): Promise<string> => {
   try {
     const prompt = `
@@ -332,10 +436,12 @@ export const generateCoverLetter = async (
 
       Hiring Manager Name: ${hiringManager}
 
+      ${jobDescription ? `Job Description / Requirements:\n"""\n${jobDescription}\n"""\n` : ''}
+
       Requirements:
       1. Format as a standard business letter.
       2. Use a professional, enthusiastic tone.
-      3. Connect the candidate's specific experience (from resume details) to the role.
+      3. Connect the candidate's specific experience (from resume details) to the role${jobDescription ? ' and the provided Job Description requirements' : ''}.
       4. Highlight why they are a good fit for ${companyName}.
       5. Keep it concise (approx 300-400 words).
       6. Do NOT include placeholders like [Insert Name] unless absolutely necessary; use the provided context.
@@ -343,17 +449,134 @@ export const generateCoverLetter = async (
       Return ONLY the body of the cover letter (including salutation and closing), no markdown formatting or explanations.
     `;
 
-    const response = await ai.models.generateContent({
+    const responseText = await callGeminiAPI('generateCoverLetter', {
       model: 'gemini-flash-lite-latest',
       contents: prompt,
       config: {
-        thinkingConfig: { thinkingBudget: 0 }
+        thinkingConfig: { thinkingBudget: 0 },
+        temperature: 0.8
       }
     });
 
-    return response.text || "Failed to generate cover letter.";
+    return responseText || "Error generating cover letter. Please try again.";
   } catch (error) {
     console.error("Gemini API Error:", error);
     return "Error generating cover letter. Please try again.";
+  }
+};
+
+export const calculateATSScore = async (resumeText: string): Promise<{ score: number; suggestions: string[]; analysis: string }> => {
+  try {
+    const prompt = `
+      You are an expert Applicant Tracking System (ATS) auditor. Analyze the following resume text and provide an ATS score (0-100) and specific suggestions for improvement.
+      
+      Resume Text:
+      """
+      ${resumeText}
+      """
+      
+      Evaluation Criteria:
+      1. Keyword Optimization: Presence of industry-standard skills and terminology.
+      2. Formatting: Is the structure logical and easy for a machine to parse?
+      3. Impact: Are achievements quantified?
+      4. Contact Info: Is essential contact information present?
+      5. Section Clarity: Are standard headers used?
+      
+      Return the response strictly as a JSON object with the following structure:
+      {
+        "score": number,
+        "suggestions": ["string", "string", ...],
+        "analysis": "A brief overall analysis of the resume's ATS friendliness"
+      }
+      
+      Do NOT include markdown formatting.
+    `;
+
+    const responseText = await callGeminiAPI('calculateATSScore', {
+      model: 'gemini-flash-lite-latest',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.2
+      }
+    });
+
+    return JSON.parse(responseText || '{"score": 0, "suggestions": [], "analysis": "Failed to analyze."}');
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    return { score: 0, suggestions: ["Error analyzing resume."], analysis: "An error occurred during analysis." };
+  }
+};
+
+export const analyzeResumeFormATS = async (resumeText: string): Promise<{ score: number; matched_keywords: string[]; missing_keywords: string[]; weak_sections: string[]; suggestion: string }> => {
+  try {
+    const prompt = `You are an ATS expert. Analyze the resume details below and return 
+ONLY a JSON response, no extra text:
+{
+  "score": <number 0-100>,
+  "matched_keywords": [<list of strong keywords found>],
+  "missing_keywords": [<list of important missing keywords>],
+  "weak_sections": [<list of sections that need improvement>],
+  "suggestion": "<one line tip to improve>"
+}
+
+Candidate Details:
+${resumeText}`;
+
+    const responseText = await callGeminiAPI('analyzeResumeFormATS', {
+      model: 'gemini-flash-lite-latest',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.2
+      }
+    });
+
+    return JSON.parse(responseText || '{"score": 0, "matched_keywords": [], "missing_keywords": [], "weak_sections": [], "suggestion": "Failed to analyze."}');
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    throw error;
+  }
+};
+
+export const improveResumeWithAI = async (resumeText: string): Promise<any> => {
+  try {
+    const prompt = `You are a professional resume writer and ATS optimization expert. 
+Using ONLY the details provided below, rewrite and restructure this 
+resume content to maximize ATS score. 
+
+STRICT RULES:
+- Do NOT invent, add, or assume any information not given below
+- Do NOT add fake metrics or companies
+- Only enhance the language, structure, and keyword usage
+- Use strong action verbs for experience and projects
+- Return the result as JSON only, no extra text:
+{
+  "name": "<name>",
+  "title": "<optimized title>",
+  "summary": "<strong 3 line professional summary>",
+  "skills": ["<optimized skills list>"],
+  "experience": [{"company": "<company>", "role": "<role>", "startDate": "<startDate>", "endDate": "<endDate>", "description": "<rewritten experience with strong action verbs>"}],
+  "projects": [{"name": "<name>", "technologies": "<technologies>", "description": "<rewritten projects with impact focus>"}],
+  "education": [{"institution": "<institution>", "degree": "<degree>", "startDate": "<startDate>", "endDate": "<endDate>"}],
+  "certifications": ["<certifications as is>"]
+}
+
+Candidate Details:
+${resumeText}`;
+
+    const responseText = await callGeminiAPI('improveResumeWithAI', {
+      model: 'gemini-flash-lite-latest',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.5
+      }
+    });
+
+    return JSON.parse(responseText || '{}');
+  } catch (error) {
+    console.error("Gemini API Error:", error);
+    throw error;
   }
 };

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Resume, TemplateType } from '../types';
-import { Mail, Phone, MapPin, Linkedin, Globe, ExternalLink } from 'lucide-react';
+import { Mail, Phone, MapPin, Linkedin, Globe, ExternalLink, Github } from 'lucide-react';
 
 interface ResumePreviewProps {
   resume: Resume;
@@ -22,6 +22,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
           {personalInfo.location && <span>| {personalInfo.location}</span>}
           {personalInfo.linkedin && <span>| {personalInfo.linkedin.replace(/^https?:\/\//, '')}</span>}
           {personalInfo.portfolio && <span>| {personalInfo.portfolio.replace(/^https?:\/\//, '')}</span>}
+          {personalInfo.githubUrl && <span>| {personalInfo.githubUrl.replace(/^https?:\/\//, '')}</span>}
         </div>
       </header>
 
@@ -128,6 +129,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
           {personalInfo.location && <div className="flex items-center gap-1"><MapPin size={14} /> {personalInfo.location}</div>}
           {personalInfo.linkedin && <div className="flex items-center gap-1"><Linkedin size={14} /> {personalInfo.linkedin.replace(/^https?:\/\//, '')}</div>}
           {personalInfo.portfolio && <div className="flex items-center gap-1"><Globe size={14} /> {personalInfo.portfolio.replace(/^https?:\/\//, '')}</div>}
+          {personalInfo.githubUrl && <div className="flex items-center gap-1"><Github size={14} /> {personalInfo.githubUrl.replace(/^https?:\/\//, '')}</div>}
         </div>
       </header>
 
@@ -242,6 +244,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
           {personalInfo.phone && <span>• {personalInfo.phone}</span>}
           {personalInfo.location && <span>• {personalInfo.location}</span>}
           {personalInfo.linkedin && <span>• {personalInfo.linkedin.replace(/^https?:\/\//, '')}</span>}
+          {personalInfo.githubUrl && <span>• {personalInfo.githubUrl.replace(/^https?:\/\//, '')}</span>}
         </div>
       </header>
 
@@ -347,8 +350,9 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
              {personalInfo.email && <div className="flex items-center gap-2"><Mail size={12} /> {personalInfo.email}</div>}
              {personalInfo.phone && <div className="flex items-center gap-2"><Phone size={12} /> {personalInfo.phone}</div>}
              {personalInfo.location && <div className="flex items-center gap-2"><MapPin size={12} /> {personalInfo.location}</div>}
-             {personalInfo.linkedin && <div className="flex items-center gap-2"><Linkedin size={12} /> LinkedIn Profile</div>}
-             {personalInfo.portfolio && <div className="flex items-center gap-2"><Globe size={12} /> Portfolio</div>}
+             {personalInfo.linkedin && <div className="flex items-center gap-2"><Linkedin size={12} /> {personalInfo.linkedin.replace(/^https?:\/\//, '')}</div>}
+             {personalInfo.portfolio && <div className="flex items-center gap-2"><Globe size={12} /> {personalInfo.portfolio.replace(/^https?:\/\//, '')}</div>}
+             {personalInfo.githubUrl && <div className="flex items-center gap-2"><Github size={12} /> {personalInfo.githubUrl.replace(/^https?:\/\//, '')}</div>}
           </div>
         </div>
 

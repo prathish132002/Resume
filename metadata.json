@@ -1,5 +1,5 @@
 {
-  "name": "ResumeAI - ATS Friendly Builder",
+  "name": "ResumeForge",
   "description": "A powerful React-based resume builder tailored for students and freshers. Features AI-powered content generation, ATS-friendly templates, and job-specific tailoring using Google Gemini API.",
   "requestFramePermissions": []
 }

@@ -4,8 +4,10 @@ import Editor from './components/Editor';
 import ResumeImporter from './components/ResumeImporter';
 import RoleGenerator from './components/RoleGenerator';
 import CoverLetterGenerator from './components/CoverLetterGenerator';
+import ATSScoreChecker from './components/ATSScoreChecker';
 import Login from './components/Login';
 import UserProfileView from './components/UserProfile';
+import AdminDashboard from './components/AdminDashboard';
 import { Resume, AppView } from './types';
 import { INITIAL_RESUME, SAMPLE_RESUME } from './constants';
 import { firebaseService } from './services/firebaseService';
@@ -15,34 +17,31 @@ const App: React.FC = () => {
   const { user, loading } = useAuth();
   const [currentView, setCurrentView] = useState<AppView>(AppView.LOGIN);
   const [resume, setResume] = useState<Resume>(INITIAL_RESUME);
-  const [isGuest, setIsGuest] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!loading) {
       if (user) {
-        setIsGuest(false);
         setCurrentView(AppView.DASHBOARD);
-      } else if (!isGuest) {
+        firebaseService.getUserProfile().then(profile => {
+          if (profile?.role === 'admin') setIsAdmin(true);
+        });
+      } else {
         setCurrentView(AppView.LOGIN);
       }
     }
-  }, [user, loading, isGuest]);
+  }, [user, loading]);
 
   const handleLoginSuccess = () => {
-    setIsGuest(false);
     setCurrentView(AppView.DASHBOARD);
-  };
-
-  const handleGuestLogin = () => {
-    setIsGuest(true);
-    setCurrentView(AppView.DASHBOARD);
+    firebaseService.getUserProfile().then(profile => {
+      if (profile?.role === 'admin') setIsAdmin(true);
+    });
   };
 
   const handleLogout = async () => {
-    if (!isGuest) {
-      await firebaseService.logout();
-    }
-    setIsGuest(false);
+    await firebaseService.logout();
+    setIsAdmin(false);
     setCurrentView(AppView.LOGIN);
   };
 
@@ -71,6 +70,10 @@ const App: React.FC = () => {
     setCurrentView(AppView.COVER_LETTER);
   }
 
+  const handleATSScore = () => {
+    setCurrentView(AppView.ATS_SCORE);
+  }
+
   const handleResumeLoaded = (newResume: Resume) => {
     setResume(newResume);
     setCurrentView(AppView.EDITOR);
@@ -96,12 +99,14 @@ const App: React.FC = () => {
 
       {currentView === AppView.DASHBOARD && (
         <Dashboard 
-          isGuest={isGuest}
+          isAdmin={isAdmin}
           onCreateNew={handleCreateNew} 
           onLoadSample={handleLoadSample}
           onImport={handleImport}
           onGenerate={handleRoleGenerate}
           onCoverLetter={handleCoverLetter}
+          onATSScore={handleATSScore}
+          onAdminDashboard={() => setCurrentView(AppView.ADMIN_DASHBOARD)}
           onEditResume={(r) => {
             setResume(r);
             setCurrentView(AppView.EDITOR);
@@ -112,7 +117,11 @@ const App: React.FC = () => {
       )}
       
       {currentView === AppView.PROFILE && (
-        <UserProfileView isGuest={isGuest} onBack={handleBackToDashboard} />
+        <UserProfileView onBack={handleBackToDashboard} />
+      )}
+      
+      {currentView === AppView.ADMIN_DASHBOARD && (
+        <AdminDashboard onBack={handleBackToDashboard} />
       )}
       
       {currentView === AppView.IMPORT && (
@@ -135,10 +144,14 @@ const App: React.FC = () => {
             onBack={handleBackToDashboard}
         />
       )}
+
+      {currentView === AppView.ATS_SCORE && (
+        <ATSScoreChecker onBack={handleBackToDashboard} />
+      )}
       
       {currentView === AppView.EDITOR && (
         <Editor 
-          isGuest={isGuest}
+          emailVerified={user?.emailVerified ?? true}
           resume={resume} 
           setResume={setResume} 
           onBack={handleBackToDashboard} 

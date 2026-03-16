@@ -1,46 +1,12 @@
 import React from 'react';
 
 export const Logo = ({ size = 32, className = "" }: { size?: number, className?: string }) => (
-  <svg 
-    width={size} 
-    height={size} 
-    viewBox="0 0 100 100" 
-    fill="none" 
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-  >
-    {/* Background - Blue rounded square */}
-    <rect width="100" height="100" rx="22" fill="#2563EB" />
-    
-    {/* Document Icon - White */}
-    <path 
-      d="M32 26C32 23.7909 33.7909 22 36 22H64C66.2091 22 68 23.7909 68 26V74C68 76.2091 66.2091 78 64 78H36C33.7909 78 32 76.2091 32 74V26Z" 
-      fill="white" 
-    />
-    
-    {/* Document Lines - Light Blue */}
-    <rect x="40" y="34" width="20" height="4" rx="2" fill="#DBEAFE" />
-    <rect x="40" y="42" width="20" height="4" rx="2" fill="#DBEAFE" />
-    <rect x="40" y="50" width="20" height="4" rx="2" fill="#DBEAFE" />
-    <rect x="40" y="58" width="12" height="4" rx="2" fill="#DBEAFE" />
-
-    {/* Checkmark Badge - Red with White Check */}
-    <g filter="url(#filter0_d_logo)">
-        <circle cx="70" cy="70" r="16" fill="#EF4444" stroke="white" strokeWidth="4"/>
-        <path d="M64 70L68 74L76 66" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-    </g>
-    
-    <defs>
-        <filter id="filter0_d_logo" x="50" y="50" width="40" height="40" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-            <feFlood floodOpacity="0" result="BackgroundImageFix"/>
-            <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-            <feOffset dy="2"/>
-            <feGaussianBlur stdDeviation="2"/>
-            <feComposite in2="hardAlpha" operator="out"/>
-            <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0"/>
-            <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
-            <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
-        </filter>
-    </defs>
-  </svg>
+  <img 
+    src="https://res.cloudinary.com/da2szyo01/image/upload/v1773654261/ChatGPT_Image_Mar_16_2026_02_48_23_PM_cqqpef.png" 
+    alt="ResumeForge Logo"
+    width={size}
+    height={size}
+    className={`rounded-lg ${className}`}
+    referrerPolicy="no-referrer"
+  />
 );

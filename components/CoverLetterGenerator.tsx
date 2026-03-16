@@ -17,6 +17,7 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
   const [companyName, setCompanyName] = useState('');
   const [jobRole, setJobRole] = useState(resume.personalInfo.location || ''); 
   const [hiringManager, setHiringManager] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
   
   // Output State
   const [coverLetterText, setCoverLetterText] = useState('');
@@ -40,7 +41,7 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
       Key Experience: ${resume.experience.map(e => `${e.role} at ${e.company} (${e.description})`).join('; ')}
     `;
 
-    const letter = await generateCoverLetter(context, companyName, jobRole, hiringManager);
+    const letter = await generateCoverLetter(context, companyName, jobRole, hiringManager, jobDescription);
     setCoverLetterText(letter);
     setStep('preview');
     setIsGenerating(false);
@@ -182,23 +183,23 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 md:p-6">
       
       {/* Header */}
-      <div className="w-full max-w-4xl flex items-center justify-between mb-8 print:hidden">
-        <div className="flex items-center gap-4">
+      <div className="w-full max-w-4xl flex items-center justify-between mb-6 md:mb-8 print:hidden">
+        <div className="flex items-center gap-3 md:gap-4">
           <button onClick={onBack} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
-            <ArrowLeft size={24} />
+            <ArrowLeft size={20} md:size={24} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Cover Letter Generator</h1>
-            <p className="text-slate-500 text-sm">Tailored for {resume.name}</p>
+            <h1 className="text-xl md:text-2xl font-bold text-slate-800">Cover Letter Generator</h1>
+            <p className="text-slate-500 text-xs md:text-sm">Tailored for {resume.name}</p>
           </div>
         </div>
       </div>
 
       {step === 'input' ? (
-        <div className="w-full max-w-lg bg-white rounded-xl shadow-xl p-8 animate-in fade-in slide-in-from-bottom-4">
+        <div className="w-full max-w-lg bg-white rounded-xl shadow-xl p-5 md:p-8 animate-in fade-in slide-in-from-bottom-4">
            <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
              <Sparkles className="text-purple-600" size={20}/> Job Details
            </h2>
@@ -240,6 +241,20 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
                    value={hiringManager}
                    onChange={(e) => setHiringManager(e.target.value)}
                  />
+               </div>
+             </div>
+
+             <div>
+               <label className="block text-sm font-medium text-slate-700 mb-1">Job Description (Optional)</label>
+               <textarea 
+                 className="w-full h-32 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                 placeholder="Paste the job description or requirements here to tailor the cover letter..."
+                 value={jobDescription}
+                 onChange={(e) => setJobDescription(e.target.value)}
+                 maxLength={3000}
+               />
+               <div className="text-right text-xs text-slate-400 mt-1">
+                 {jobDescription.length} / 3000
                </div>
              </div>
 

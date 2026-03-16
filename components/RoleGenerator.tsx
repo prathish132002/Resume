@@ -15,6 +15,7 @@ const RoleGenerator: React.FC<RoleGeneratorProps> = ({ onGenerate, onBack }) => 
   // Scratch Mode State
   const [role, setRole] = useState('');
   const [level, setLevel] = useState('Entry Level');
+  const [jobDescription, setJobDescription] = useState('');
   
   // Transform Mode State
   const [resumeText, setResumeText] = useState('');
@@ -31,7 +32,7 @@ const RoleGenerator: React.FC<RoleGeneratorProps> = ({ onGenerate, onBack }) => 
     setError('');
 
     try {
-      const jsonString = await generateResumeByRole(role, level);
+      const jsonString = await generateResumeByRole(role, level, jobDescription);
       const parsedData = JSON.parse(cleanJson(jsonString));
 
       const newResume: Resume = {
@@ -69,7 +70,7 @@ const RoleGenerator: React.FC<RoleGeneratorProps> = ({ onGenerate, onBack }) => 
         const parsedData = JSON.parse(cleanJson(parsedJsonString));
 
         // Step 2: Transform the parsed data for the target role
-        const transformedJsonString = await transformResumeForRole(JSON.stringify(parsedData), targetRole);
+        const transformedJsonString = await transformResumeForRole(JSON.stringify(parsedData), targetRole, jobDescription);
         const transformedData = JSON.parse(cleanJson(transformedJsonString));
 
         const newResume: Resume = {
@@ -96,8 +97,8 @@ const RoleGenerator: React.FC<RoleGeneratorProps> = ({ onGenerate, onBack }) => 
   const levels = ['Internship', 'Entry Level', 'Junior', 'Mid-Level', 'Senior'];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="w-full max-w-lg bg-white rounded-xl shadow-xl p-8">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 md:p-6">
+      <div className="w-full max-w-lg bg-white rounded-xl shadow-xl p-5 md:p-8">
         
         <div className="flex items-center gap-4 mb-6">
           <button onClick={onBack} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
@@ -163,6 +164,20 @@ const RoleGenerator: React.FC<RoleGeneratorProps> = ({ onGenerate, onBack }) => 
                 </div>
             </div>
 
+            <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Job Description (Optional)</label>
+                <textarea
+                    className="w-full h-32 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                    placeholder="Paste the job description or requirements here to tailor the resume..."
+                    value={jobDescription}
+                    onChange={(e) => setJobDescription(e.target.value)}
+                    maxLength={3000}
+                />
+                <div className="text-right text-xs text-slate-400 mt-1">
+                    {jobDescription.length} / 3000
+                </div>
+            </div>
+
             <div className="pt-4">
                 <Button 
                 onClick={handleGenerateFromScratch} 
@@ -189,7 +204,11 @@ const RoleGenerator: React.FC<RoleGeneratorProps> = ({ onGenerate, onBack }) => 
                         placeholder="Paste your current resume content here..."
                         value={resumeText}
                         onChange={(e) => setResumeText(e.target.value)}
+                        maxLength={3000}
                     />
+                    <div className="text-right text-xs text-slate-400 mt-1">
+                        {resumeText.length} / 3000
+                    </div>
                 </div>
 
                 <div>
@@ -203,6 +222,20 @@ const RoleGenerator: React.FC<RoleGeneratorProps> = ({ onGenerate, onBack }) => 
                         value={targetRole}
                         onChange={(e) => setTargetRole(e.target.value)}
                     />
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Job Description (Optional)</label>
+                    <textarea
+                        className="w-full h-32 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm"
+                        placeholder="Paste the job description or requirements here to tailor the resume..."
+                        value={jobDescription}
+                        onChange={(e) => setJobDescription(e.target.value)}
+                        maxLength={3000}
+                    />
+                    <div className="text-right text-xs text-slate-400 mt-1">
+                        {jobDescription.length} / 3000
                     </div>
                 </div>
 

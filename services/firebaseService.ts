@@ -5,7 +5,10 @@ import {
   updateProfile,
   User,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  verifyBeforeUpdateEmail
 } from 'firebase/auth';
 import { 
   collection, 
@@ -58,6 +61,9 @@ export const firebaseService = {
           displayName: fullName
         });
         
+        // Send email verification
+        await sendEmailVerification(userCredential.user);
+        
         // Create user profile in Firestore
         const userRef = doc(db, 'users', userCredential.user.uid);
         await setDoc(userRef, {
@@ -85,6 +91,31 @@ export const firebaseService = {
   async logout() {
     try {
       await signOut(auth);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async resetPassword(email: string) {
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async resendVerificationEmail() {
+    const user = auth.currentUser;
+    if (user && !user.emailVerified) {
+      await sendEmailVerification(user);
+    }
+  },
+
+  async updateEmailAddress(newEmail: string) {
+    const user = auth.currentUser;
+    if (!user) throw new Error('User not authenticated');
+    try {
+      await verifyBeforeUpdateEmail(user, newEmail);
     } catch (error) {
       throw error;
     }

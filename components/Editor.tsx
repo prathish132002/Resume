@@ -8,8 +8,7 @@ import { generateSummary, improveDescription, getSkillSuggestions, fitResumeToOn
 import { firebaseService } from '../services/firebaseService';
 import { storageService } from '../services/storageService';
 import HistoryModal from './HistoryModal';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
+import { useReactToPrint } from 'react-to-print';
 
 interface EditorProps {
   emailVerified: boolean;
@@ -188,104 +187,22 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
 
   const [isExporting, setIsExporting] = useState(false);
   
-  const handleDownloadPDF = async () => {
-    if (!componentRef.current) return;
-
-    setIsExporting(true);
-    setShowExportModal(false);
-
-    // Must be in preview mode so element is visible
-    setViewMode('preview');
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const element = componentRef.current;
-
-    // Save original styles
-    const originalTransform = element.style.transform;
-    const originalWidth = element.style.width;
-    const originalHeight = element.style.height;
-    const originalOverflow = element.style.overflow;
-
-    // Force full A4 size, no scaling, full height
-    element.style.transform = 'none';
-    element.style.width = '794px';
-    element.style.height = 'auto';
-    element.style.overflow = 'visible';
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    try {
-      const fullHeight = element.scrollHeight;
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        width: 794,
-        height: fullHeight,        // ✅ capture FULL height
-        windowWidth: 794,
-        windowHeight: fullHeight,  // ✅ no clipping
-        scrollX: 0,
-        scrollY: 0,
-      });
-
-      // Restore styles
-      element.style.transform = originalTransform;
-      element.style.width = originalWidth;
-      element.style.height = originalHeight;
-      element.style.overflow = originalOverflow;
-
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();   // 210mm
-      const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
-
-      const imgWidthPx = canvas.width / 2;    // undo scale:2
-      const imgHeightPx = canvas.height / 2;
-
-      const mmPerPx = pdfWidth / imgWidthPx;
-      const totalHeightMm = imgHeightPx * mmPerPx;
-
-      // Split into pages properly
-      let yPositionMm = 0;
-      let pageCount = 0;
-
-      while (yPositionMm < totalHeightMm) {
-        if (pageCount > 0) pdf.addPage();
-
-        pdf.addImage(
-          canvas.toDataURL('image/png'),
-          'PNG',
-          0,
-          -yPositionMm,   // shift image up as we go to next page
-          pdfWidth,
-          totalHeightMm
-        );
-
-        yPositionMm += pdfHeight;
-        pageCount++;
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef,
+    documentTitle: resume.personalInfo.fullName || 'resume',
+    pageStyle: `
+      @page { size: A4; margin: 10mm; }
+      @media print {
+        body { -webkit-print-color-adjust: exact; }
+        .resume-section { break-inside: avoid; margin-bottom: 5px; }
       }
-
-      pdf.save(`${resume.personalInfo?.fullName || 'resume'}.pdf`);
-
-    } catch (err) {
-      console.error('PDF generation error:', err);
-      alert('Failed to download PDF. Please try again.');
-
-      // Restore styles on error too
-      element.style.transform = originalTransform;
-      element.style.width = originalWidth;
-      element.style.height = originalHeight;
-      element.style.overflow = originalOverflow;
-    }
-
-    setIsExporting(false);
-  };
+    `,
+  });
 
   const resumeToText = (resume: Resume): string => {
     return `
       Name: ${resume.personalInfo.fullName}
-      Title: ${resume.personalInfo.title || ''}
+      Title: ${resume.personalInfo.location || ''}
       Summary: ${resume.personalInfo.summary || ''}
       Email: ${resume.personalInfo.email || ''}
       Phone: ${resume.personalInfo.phone || ''}
@@ -1008,7 +925,7 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
 
             <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
               <Button variant="ghost" onClick={() => setShowExportModal(false)}>Cancel</Button>
-              <Button onClick={handleDownloadPDF} icon={<Download size={18} />}>
+              <Button onClick={handlePrint} icon={<Download size={18} />}>
                 Download PDF
               </Button>
             </div>

@@ -19,7 +19,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
     <div className="h-full w-full bg-white text-black p-12 font-serif text-sm leading-relaxed">
       <header className="text-center mb-6 border-b-2 border-black pb-4">
         <h1 className="text-3xl font-bold uppercase mb-3 tracking-wide">{personalInfo.fullName || 'YOUR NAME'}</h1>
-        <div className="flex flex-wrap justify-center gap-x-2 text-sm">
+        <div className="contact-info-container text-sm">
           {personalInfo.email && <span>{personalInfo.email}</span>}
           {personalInfo.phone && <span>| {personalInfo.phone}</span>}
           {personalInfo.location && <span>| {personalInfo.location}</span>}
@@ -30,25 +30,25 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
       </header>
 
       {personalInfo.summary && (
-        <section className="mb-6">
+        <section className="mb-6 resume-section">
           <h2 className="text-base font-bold uppercase border-b border-black mb-2">Professional Summary</h2>
           <p>{personalInfo.summary}</p>
         </section>
       )}
 
       {skills && skills.length > 0 && (
-        <section className="mb-6">
+        <section className="mb-6 resume-section">
           <h2 className="text-base font-bold uppercase border-b border-black mb-2">Technical Skills</h2>
           <p>{skills.join(', ')}</p>
         </section>
       )}
 
       {experience && experience.length > 0 && (
-        <section className="mb-6">
+        <section className="mb-6 resume-section">
           <h2 className="text-base font-bold uppercase border-b border-black mb-3">Professional Experience</h2>
           <div className="space-y-4">
             {experience.map((exp) => (
-              <div key={exp.id}>
+              <div key={exp.id} className="break-inside-avoid">
                 <div className="flex justify-between items-baseline font-bold">
                   <span>{exp.company}</span>
                   <span>{exp.startDate} – {exp.endDate}</span>
@@ -62,11 +62,11 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
       )}
 
       {projects && projects.length > 0 && (
-        <section className="mb-6">
+        <section className="mb-6 resume-section">
           <h2 className="text-base font-bold uppercase border-b border-black mb-3">Projects</h2>
           <div className="space-y-3">
             {projects.map((proj) => (
-              <div key={proj.id}>
+              <div key={proj.id} className="break-inside-avoid">
                 <div className="font-bold">
                   {proj.name} 
                   {proj.link && <span className="font-normal text-xs ml-2">({proj.link})</span>}
@@ -80,11 +80,11 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
       )}
 
       {education && education.length > 0 && (
-        <section className="mb-6">
+        <section className="mb-6 resume-section">
           <h2 className="text-base font-bold uppercase border-b border-black mb-3">Education</h2>
           <div className="space-y-2">
             {education.map((edu) => (
-              <div key={edu.id}>
+              <div key={edu.id} className="break-inside-avoid">
                 <div className="flex justify-between font-bold">
                   <span>{edu.institution}</span>
                   <span>{edu.startDate} – {edu.endDate}</span>
@@ -98,22 +98,22 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
       )}
 
       {certifications && certifications.length > 0 && (
-        <section className="mb-6">
+        <section className="mb-6 resume-section">
           <h2 className="text-base font-bold uppercase border-b border-black mb-2">Certifications</h2>
           <ul className="list-disc list-inside pl-2">
             {certifications.map((cert, idx) => (
-              <li key={idx}>{cert}</li>
+              <li key={idx} className="break-inside-avoid">{cert}</li>
             ))}
           </ul>
         </section>
       )}
 
       {achievements && achievements.length > 0 && (
-        <section className="mb-6">
+        <section className="mb-6 resume-section">
           <h2 className="text-base font-bold uppercase border-b border-black mb-2">Achievements</h2>
           <ul className="list-disc list-inside pl-2">
             {achievements.map((ach, idx) => (
-              <li key={idx}>{ach}</li>
+              <li key={idx} className="break-inside-avoid">{ach}</li>
             ))}
           </ul>
         </section>
@@ -179,7 +179,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
           <h2 className="text-lg font-bold text-blue-700 uppercase mb-3">Key Projects</h2>
           <div className="space-y-4">
             {projects.map((proj) => (
-              <div key={proj.id}>
+              <div key={proj.id} className="break-inside-avoid">
                 <div className="flex justify-between items-center mb-1">
                   <h3 className="font-bold text-slate-900">{proj.name}</h3>
                   {proj.link && (
@@ -201,7 +201,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
           <h2 className="text-lg font-bold text-blue-700 uppercase mb-3">Education</h2>
           <div className="space-y-3">
             {education.map((edu) => (
-              <div key={edu.id}>
+              <div key={edu.id} className="break-inside-avoid">
                 <div className="flex justify-between items-baseline">
                   <h3 className="font-bold text-slate-900">{edu.institution}</h3>
                   <span className="text-xs font-medium text-slate-500">{edu.startDate} – {edu.endDate}</span>
@@ -220,7 +220,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
                 <section>
                     <h2 className="text-lg font-bold text-blue-700 uppercase mb-2">Certifications</h2>
                     <ul className="list-disc list-inside text-sm text-slate-700">
-                        {certifications.map((c, i) => <li key={i}>{c}</li>)}
+                        {certifications.map((c, i) => <li key={i} className="break-inside-avoid">{c}</li>)}
                     </ul>
                 </section>
             )}
@@ -228,7 +228,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
                 <section>
                     <h2 className="text-lg font-bold text-blue-700 uppercase mb-2">Achievements</h2>
                     <ul className="list-disc list-inside text-sm text-slate-700">
-                        {achievements.map((a, i) => <li key={i}>{a}</li>)}
+                        {achievements.map((a, i) => <li key={i} className="break-inside-avoid">{a}</li>)}
                     </ul>
                 </section>
             )}
@@ -263,7 +263,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
           <h2 className="text-sm font-bold uppercase tracking-wider border-b border-gray-200 mb-4 pb-1">Experience</h2>
           <div className="space-y-5">
             {experience.map((exp) => (
-              <div key={exp.id}>
+              <div key={exp.id} className="break-inside-avoid">
                 <div className="flex justify-between font-bold text-sm mb-1">
                   <span>{exp.company}</span>
                   <span>{exp.startDate} – {exp.endDate}</span>
@@ -281,7 +281,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
            <h2 className="text-sm font-bold uppercase tracking-wider border-b border-gray-200 mb-4 pb-1">Projects</h2>
           <div className="space-y-4">
             {projects.map((proj) => (
-              <div key={proj.id}>
+              <div key={proj.id} className="break-inside-avoid">
                  <div className="flex justify-between items-center mb-1">
                    <span className="font-bold text-sm">{proj.name}</span>
                  </div>
@@ -299,7 +299,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
             <h2 className="text-sm font-bold uppercase tracking-wider border-b border-gray-200 mb-4 pb-1">Education</h2>
             <div className="space-y-3">
               {education.map((edu) => (
-                <div key={edu.id}>
+                <div key={edu.id} className="break-inside-avoid">
                   <div className="font-bold text-sm">{edu.institution}</div>
                   <div className="text-sm">{edu.degree}</div>
                   <div className="text-xs text-gray-500">{edu.startDate} – {edu.endDate}</div>
@@ -333,7 +333,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
                 <section>
                   <h2 className="text-sm font-bold uppercase tracking-wider border-b border-gray-200 mb-4 pb-1">Achievements</h2>
                    <ul className="list-disc list-inside text-sm">
-                      {achievements.map((a, i) => <li key={i}>{a}</li>)}
+                      {achievements.map((a, i) => <li key={i} className="break-inside-avoid">{a}</li>)}
                    </ul>
                 </section>
              )}
@@ -375,7 +375,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
              <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4 border-b border-slate-700 pb-1">Education</h2>
              <div className="space-y-4">
                 {education.map((edu) => (
-                  <div key={edu.id}>
+                  <div key={edu.id} className="break-inside-avoid">
                     <div className="text-sm font-bold">{edu.institution}</div>
                     <div className="text-xs text-slate-400">{edu.degree}</div>
                     <div className="text-xs text-slate-500 mt-1">{edu.startDate} – {edu.endDate}</div>
@@ -389,7 +389,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
             <section>
                  <h2 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4 border-b border-slate-700 pb-1">Certifications</h2>
                  <ul className="list-disc list-inside text-xs text-slate-300 space-y-1">
-                    {certifications.map((c, i) => <li key={i}>{c}</li>)}
+                    {certifications.map((c, i) => <li key={i} className="break-inside-avoid">{c}</li>)}
                  </ul>
             </section>
         )}
@@ -409,7 +409,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
             <h2 className="text-lg font-bold text-slate-900 border-b-2 border-slate-900 mb-4 pb-1">Experience</h2>
             <div className="space-y-6">
               {experience.map((exp) => (
-                <div key={exp.id}>
+                <div key={exp.id} className="break-inside-avoid">
                   <div className="flex justify-between items-baseline mb-1">
                     <h3 className="font-bold text-slate-900 text-base">{exp.role}</h3>
                     <span className="text-xs font-semibold text-slate-500">{exp.startDate} – {exp.endDate}</span>
@@ -427,7 +427,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
              <h2 className="text-lg font-bold text-slate-900 border-b-2 border-slate-900 mb-4 pb-1">Projects</h2>
              <div className="space-y-5">
                {projects.map((proj) => (
-                 <div key={proj.id}>
+                 <div key={proj.id} className="break-inside-avoid">
                     <div className="font-bold text-slate-900 flex items-center gap-2">
                       {proj.name}
                       {proj.link && <ExternalLink size={12} className="text-slate-400" />}
@@ -444,7 +444,7 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
              <section>
                  <h2 className="text-lg font-bold text-slate-900 border-b-2 border-slate-900 mb-4 pb-1">Achievements</h2>
                  <ul className="list-disc list-inside text-sm text-slate-600 space-y-1">
-                    {achievements.map((a, i) => <li key={i}>{a}</li>)}
+                    {achievements.map((a, i) => <li key={i} className="break-inside-avoid">{a}</li>)}
                  </ul>
              </section>
         )}
@@ -453,21 +453,38 @@ const ResumePreview: React.FC<ResumePreviewProps> = ({ resume, template, scale =
   );
 
   return (
-    <div 
-      className="origin-top shadow-2xl print:shadow-none print-area print:!transform-none print:!m-0 print:!w-full print:!h-auto bg-white"
-      style={{ 
-        width: '210mm', 
-        minHeight: '297mm', 
-        transform: `scale(${currentScale})`,
-        marginBottom: `${(297 * (currentScale - 1))}mm`, // Adjust for scale taking up less space flow-wise
-        marginRight: `${(210 * (currentScale - 1))}mm`
-      }}
-    >
-      {template === TemplateType.ATS_CLASSIC && <AtsTemplate />}
-      {template === TemplateType.MODERN && <ModernTemplate />}
-      {template === TemplateType.MINIMAL && <MinimalTemplate />}
-      {template === TemplateType.EXECUTIVE && <ExecutiveTemplate />}
-    </div>
+    <>
+      <style>{`
+        .resume-section {
+          orphans: 3;
+          widows: 3;
+          break-inside: auto;
+        }
+        .contact-info-container {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          align-items: center;
+          gap: 12px;
+          width: 100%;
+        }
+      `}</style>
+      <div 
+        className="origin-top shadow-2xl print:shadow-none print-area print:!transform-none print:!m-0 print:!w-full print:!h-auto bg-white overflow-hidden"
+        style={{ 
+          width: '210mm', 
+          minHeight: '297mm', 
+          transform: `scale(${currentScale})`,
+          marginBottom: `${(297 * (currentScale - 1))}mm`, // Adjust for scale taking up less space flow-wise
+          marginRight: `${(210 * (currentScale - 1))}mm`
+        }}
+      >
+        {template === TemplateType.ATS_CLASSIC && <AtsTemplate />}
+        {template === TemplateType.MODERN && <ModernTemplate />}
+        {template === TemplateType.MINIMAL && <MinimalTemplate />}
+        {template === TemplateType.EXECUTIVE && <ExecutiveTemplate />}
+      </div>
+    </>
   );
 };
 

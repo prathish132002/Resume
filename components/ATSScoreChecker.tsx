@@ -68,7 +68,7 @@ const ATSScoreChecker: React.FC<ATSScoreCheckerProps> = ({ onBack }) => {
       const analysisResult = await calculateATSScore(text);
       setResult(analysisResult);
     } catch (err: any) {
-      console.error(err);
+      console.error('ATS Score Checker Error:', err);
       setError(err.message || 'Failed to process the resume. Please try again.');
     } finally {
       setIsProcessing(false);

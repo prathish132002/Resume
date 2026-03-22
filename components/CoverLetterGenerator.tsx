@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Button } from './ui/Button';
 import { ArrowLeft, Building, User, FileText, Sparkles, Download, Printer, Layout, X, Mail, Phone, MapPin, Linkedin } from 'lucide-react';
 import { generateCoverLetter } from '../services/geminiService';
+import { generateCoverLetterPdf } from '../services/pdfService';
 import { Resume, TemplateType } from '../types';
 import { TEMPLATES } from '../constants';
 
@@ -49,9 +50,13 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
 
   const handlePrint = () => {
     setShowExportModal(false);
-    setTimeout(() => {
-      window.print();
-    }, 300);
+    generateCoverLetterPdf(
+      resume.personalInfo.fullName,
+      resume.personalInfo.email,
+      resume.personalInfo.phone,
+      companyName,
+      coverLetterText
+    );
   };
 
   const handleBodyChange = (e: React.FormEvent<HTMLDivElement>) => {

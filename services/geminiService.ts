@@ -4,9 +4,9 @@ import { checkRateLimitAndUsage, trackAIUsage } from "./aiTrackingService";
 // ─── Model Constants ────────────────────────────────────────────────────────
 // Centralized so you only need to update one place when models change.
 const MODELS = {
-  FLASH_LITE: 'gemini-2.0-flash-lite',       // Fast & cheap — most tasks
-  FLASH:      'gemini-2.0-flash',             // Mid-tier — parsing, generation
-  PRO:        'gemini-2.5-pro-preview-03-25', // Best quality — deep analysis
+  FLASH_LITE: 'gemini-3.1-flash-lite-preview',       // Fast & cheap — most tasks
+  FLASH:      'gemini-3-flash-preview',             // Mid-tier — parsing, generation
+  PRO:        'gemini-3.1-pro-preview', // Best quality — deep analysis
 } as const;
 
 // ─── API Key ────────────────────────────────────────────────────────────────
@@ -54,6 +54,15 @@ const hashString = (str: string): string => {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const parseJSON = (text: string, fallback: any) => {
+  try {
+    return JSON.parse(text.replace(/```json/g, '').replace(/```/g, '').trim());
+  } catch (e) {
+    console.error("Failed to parse JSON", e);
+    return fallback;
+  }
+};
 
 // ─── Core API Wrapper ─────────────────────────────────────────────────────────
 const callGeminiAPI = async (
@@ -549,7 +558,7 @@ export const calculateATSScore = async (resumeText: string): Promise<{ score: nu
       },
     });
 
-    return JSON.parse(responseText || '{"score": 0, "suggestions": [], "analysis": "Failed to analyze."}');
+    return parseJSON(responseText || '{"score": 0, "suggestions": [], "analysis": "Failed to analyze."}', { score: 0, suggestions: ["Error analyzing resume."], analysis: "An error occurred during analysis." });
   } catch (error) {
     console.error("Gemini API Error:", error);
     return { score: 0, suggestions: ["Error analyzing resume."], analysis: "An error occurred during analysis." };
@@ -581,7 +590,7 @@ ${resumeText}`;
       },
     });
 
-    return JSON.parse(responseText || '{"score": 0, "matched_keywords": [], "missing_keywords": [], "weak_sections": [], "suggestion": "Failed to analyze."}');
+    return parseJSON(responseText || '{"score": 0, "matched_keywords": [], "missing_keywords": [], "weak_sections": [], "suggestion": "Failed to analyze."}', { score: 0, matched_keywords: [], missing_keywords: [], weak_sections: [], suggestion: "Failed to analyze." });
   } catch (error) {
     console.error("Gemini API Error:", error);
     throw error;

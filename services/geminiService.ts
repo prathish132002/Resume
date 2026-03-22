@@ -12,9 +12,20 @@ const MODELS = {
 // ─── API Key ────────────────────────────────────────────────────────────────
 // Support both AI Studio (process.env.API_KEY) and Vite/Vercel (import.meta.env.VITE_GEMINI_API_KEY)
 const getApiKey = () => {
-  if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
-    return process.env.GEMINI_API_KEY;
+  // 1. Check import.meta.env (Standard Vite way - most reliable for Vercel)
+  // @ts-ignore
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    // @ts-ignore
+    const key = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY;
+    if (key) return key;
   }
+
+  // 2. Check process.env (AI Studio / Node / Define plugin)
+  if (typeof process !== 'undefined' && process.env) {
+    if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
+    if (process.env.VITE_GEMINI_API_KEY) return process.env.VITE_GEMINI_API_KEY;
+  }
+
   return '';
 };
 

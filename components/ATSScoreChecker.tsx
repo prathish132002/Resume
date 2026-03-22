@@ -23,6 +23,7 @@ const ATSScoreChecker: React.FC<ATSScoreCheckerProps> = ({ onBack }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<ATSResult | null>(null);
+  const [lastProcessedFile, setLastProcessedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
@@ -67,6 +68,7 @@ const ATSScoreChecker: React.FC<ATSScoreCheckerProps> = ({ onBack }) => {
       
       const analysisResult = await calculateATSScore(text);
       setResult(analysisResult);
+      setLastProcessedFile(file);
     } catch (err: any) {
       console.error('ATS Score Checker Error:', err);
       setError(err.message || 'Failed to process the resume. Please try again.');
@@ -147,11 +149,11 @@ const ATSScoreChecker: React.FC<ATSScoreCheckerProps> = ({ onBack }) => {
 
             <Button
               onClick={handleUpload}
-              disabled={!file || isProcessing}
+              disabled={!file || isProcessing || file === lastProcessedFile}
               isLoading={isProcessing}
               className="w-full mt-6 py-3 md:py-4 text-base md:text-lg"
             >
-              Check ATS Score
+              {file === lastProcessedFile && result ? 'Score Calculated' : 'Check ATS Score'}
             </Button>
           </div>
 

@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from './ui/Button';
 import { ArrowLeft, Building, User, FileText, Sparkles, Download, Printer, Layout, X, Mail, Phone, MapPin, Linkedin } from 'lucide-react';
 import { generateCoverLetter } from '../services/geminiService';
-import { generateCoverLetterPdf } from '../services/pdfService';
 import { Resume, TemplateType } from '../types';
 import { TEMPLATES } from '../constants';
+import { useReactToPrint } from 'react-to-print';
 
 interface CoverLetterGeneratorProps {
   resume: Resume;
@@ -23,6 +23,12 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
   // Output State
   const [coverLetterText, setCoverLetterText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [lastProcessedInputs, setLastProcessedInputs] = useState<{
+    companyName: string;
+    jobRole: string;
+    hiringManager: string;
+    jobDescription: string;
+  } | null>(null);
   
   // Template & Export State
   const [activeTemplate, setActiveTemplate] = useState<TemplateType>(TemplateType.ATS_CLASSIC);
@@ -44,20 +50,22 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
 
     const letter = await generateCoverLetter(context, companyName, jobRole, hiringManager, jobDescription);
     setCoverLetterText(letter);
+    setLastProcessedInputs({ companyName, jobRole, hiringManager, jobDescription });
     setStep('preview');
     setIsGenerating(false);
   };
 
-  const handlePrint = () => {
-    setShowExportModal(false);
-    generateCoverLetterPdf(
-      resume.personalInfo.fullName,
-      resume.personalInfo.email,
-      resume.personalInfo.phone,
-      companyName,
-      coverLetterText
-    );
-  };
+  const componentRef = useRef<HTMLDivElement>(null);
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef,
+    documentTitle: `cover-letter-${companyName || 'cover-letter'}`,
+    pageStyle: `
+      @page { size: A4; margin: 10mm; }
+      @media print {
+        body { -webkit-print-color-adjust: exact; }
+      }
+    `,
+  });
 
   const handleBodyChange = (e: React.FormEvent<HTMLDivElement>) => {
     setCoverLetterText(e.currentTarget.innerText);
@@ -187,6 +195,12 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
     }
   }
 
+  const isInputsChanged = !lastProcessedInputs || 
+    companyName !== lastProcessedInputs.companyName ||
+    jobRole !== lastProcessedInputs.jobRole ||
+    hiringManager !== lastProcessedInputs.hiringManager ||
+    jobDescription !== lastProcessedInputs.jobDescription;
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 md:p-6">
       
@@ -217,7 +231,7 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
                  <input 
                    className="w-full pl-10 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                    placeholder="e.g. Google, Amazon"
-                   value={companyName}
+                   value={companyName || ''}
                    onChange={(e) => setCompanyName(e.target.value)}
                  />
                </div>
@@ -230,7 +244,7 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
                  <input 
                    className="w-full pl-10 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                    placeholder="e.g. Senior Frontend Engineer"
-                   value={jobRole}
+                   value={jobRole || ''}
                    onChange={(e) => setJobRole(e.target.value)}
                  />
                </div>
@@ -243,7 +257,7 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
                  <input 
                    className="w-full pl-10 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
                    placeholder="e.g. Jane Doe (or leave blank)"
-                   value={hiringManager}
+                   value={hiringManager || ''}
                    onChange={(e) => setHiringManager(e.target.value)}
                  />
                </div>
@@ -254,7 +268,7 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
                <textarea 
                  className="w-full h-32 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none text-sm"
                  placeholder="Paste the job description or requirements here to tailor the cover letter..."
-                 value={jobDescription}
+                 value={jobDescription || ''}
                  onChange={(e) => setJobDescription(e.target.value)}
                  maxLength={3000}
                />
@@ -286,8 +300,15 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
                   <Button onClick={() => setStep('input')} variant="outline" className="w-full justify-start" icon={<ArrowLeft size={16}/>}>
                     Edit Details
                   </Button>
-                  <Button onClick={handleGenerate} isLoading={isGenerating} variant="secondary" className="w-full justify-start" icon={<Sparkles size={16}/>}>
-                    Regenerate
+                  <Button 
+                    onClick={handleGenerate} 
+                    isLoading={isGenerating} 
+                    disabled={!isInputsChanged}
+                    variant="secondary" 
+                    className="w-full justify-start" 
+                    icon={<Sparkles size={16}/>}
+                  >
+                    {!isInputsChanged ? 'Already Generated' : 'Regenerate'}
                   </Button>
                   <Button onClick={() => setShowExportModal(true)} variant="primary" className="w-full justify-start" icon={<Printer size={16}/>}>
                     Export PDF
@@ -300,14 +321,14 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
               </div>
            </div>
 
-           {/* A4 Preview */}
-           <div className="flex-1 animate-in fade-in slide-in-from-bottom-4">
-              <div 
-                className="a4-paper bg-white shadow-2xl mx-auto p-12 print:shadow-none print-area"
-              >
-                 {renderTemplate()}
-              </div>
-           </div>
+            <div className="flex-1 animate-in fade-in slide-in-from-bottom-4">
+               <div 
+                 ref={componentRef}
+                 className="a4-paper bg-white shadow-2xl mx-auto p-12 print:shadow-none print-area"
+               >
+                  {renderTemplate()}
+               </div>
+            </div>
         </div>
       )}
 

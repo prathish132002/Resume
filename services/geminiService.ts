@@ -4,26 +4,32 @@ import { checkRateLimitAndUsage, trackAIUsage } from "./aiTrackingService";
 // ─── Model Constants ────────────────────────────────────────────────────────
 // Centralized so you only need to update one place when models change.
 const MODELS = {
-  FLASH_LITE: 'gemini-3.1-flash-lite-preview',       // Fast & cheap — most tasks
-  FLASH:      'gemini-3-flash-preview',             // Mid-tier — parsing, generation
-  PRO:        'gemini-3.1-pro-preview', // Best quality — deep analysis
+  FLASH_LITE: 'gemini-2.5-flash-lite',       // Fast & cheap — most tasks
+  FLASH:      'gemini-2.5-flash',             // Mid-tier — parsing, generation
+  PRO:        'gemini-2.5-pro', // Best quality — deep analysis
 } as const;
 
 // ─── API Key ────────────────────────────────────────────────────────────────
 // Support both AI Studio (process.env.API_KEY) and Vite/Vercel (import.meta.env.VITE_GEMINI_API_KEY)
 const getApiKey = () => {
-  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-    return process.env.API_KEY;
-  }
-  // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_GEMINI_API_KEY) {
-    // @ts-ignore
-    return import.meta.env.VITE_GEMINI_API_KEY;
+  if (typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY) {
+    return process.env.GEMINI_API_KEY;
   }
   return '';
 };
 
-const ai = new GoogleGenAI({ apiKey: getApiKey() });
+let aiClient: GoogleGenAI | null = null;
+
+const getAIClient = () => {
+  if (!aiClient) {
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is not configured.");
+    }
+    aiClient = new GoogleGenAI({ apiKey });
+  }
+  return aiClient;
+};
 
 // ─── Cache ───────────────────────────────────────────────────────────────────
 const CACHE_KEY = 'resumeForge_ai_cache';
@@ -94,7 +100,7 @@ const callGeminiAPI = async (
       config: { ...params.config },
     };
 
-    const response = await ai.models.generateContent(mergedParams);
+    const response = await getAIClient().models.generateContent(mergedParams);
     const responseText = response.text || "";
 
     // 3. Track usage

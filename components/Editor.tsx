@@ -4,7 +4,7 @@ import { TEMPLATES } from '../constants';
 import ResumePreview from './ResumePreview';
 import { Button } from './ui/Button';
 import { Plus, Trash2, Wand2, ChevronDown, ChevronUp, Download, ArrowLeft, Save, X, Layout, Lightbulb, PlusCircle, History, Loader2, Scissors, FileText } from 'lucide-react';
-import { generateSummary, improveDescription, getSkillSuggestions, fitResumeToOnePage, analyzeResumeFormATS, improveResumeWithAI } from '../services/geminiService';
+import { generateSummary, improveDescription, getSkillSuggestions, fitResumeToOnePage, analyzeResumeFromATS, improveResumeWithAI } from '../services/geminiService';
 import { firebaseService } from '../services/firebaseService';
 import { storageService } from '../services/storageService';
 import HistoryModal from './HistoryModal';
@@ -248,7 +248,7 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
     setIsCheckingATS(true);
     try {
       const resumeText = resumeToText(resume);
-      const result = await analyzeResumeFormATS(resumeText);
+      const result = await analyzeResumeFromATS(resumeText);
       
       const atsResult = {
         score: result.score,
@@ -917,9 +917,12 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
             </div>
 
             <div className="bg-slate-50 p-4 rounded-lg mb-6 border border-slate-100">
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <p className="text-xs text-slate-500 leading-relaxed mb-2">
                     <strong>Tip:</strong> For best ATS compatibility, we recommend the <strong>ATS Standard</strong> or <strong>Modern Clean</strong> templates. 
                     Ensure "Background graphics" is enabled in your print settings if using Modern/Executive templates.
+                </p>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                    <strong>Mobile/Tablet Users:</strong> When the print dialog opens, look for the <strong>"Save as PDF"</strong> option in the destination dropdown. If you don't see it, tap the <strong>three dots</strong> in the top right corner and select <strong>"Save as PDF"</strong> to download your file.
                 </p>
             </div>
 

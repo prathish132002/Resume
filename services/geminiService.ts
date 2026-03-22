@@ -1,7 +1,16 @@
-import { GoogleGenAI, Type, GenerateContentParameters } from "@google/genai";
+import { GoogleGenAI, GenerateContentParameters } from "@google/genai";
 import { checkRateLimitAndUsage, trackAIUsage } from "./aiTrackingService";
 
-// Support both AI Studio environment (process.env.API_KEY) and Vite/Vercel (import.meta.env.VITE_GEMINI_API_KEY)
+// ─── Model Constants ────────────────────────────────────────────────────────
+// Centralized so you only need to update one place when models change.
+const MODELS = {
+  FLASH_LITE: 'gemini-2.0-flash-lite',       // Fast & cheap — most tasks
+  FLASH:      'gemini-2.0-flash',             // Mid-tier — parsing, generation
+  PRO:        'gemini-2.5-pro-preview-03-25', // Best quality — deep analysis
+} as const;
+
+// ─── API Key ────────────────────────────────────────────────────────────────
+// Support both AI Studio (process.env.API_KEY) and Vite/Vercel (import.meta.env.VITE_GEMINI_API_KEY)
 const getApiKey = () => {
   if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
     return process.env.API_KEY;
@@ -14,40 +23,55 @@ const getApiKey = () => {
   return '';
 };
 
-const apiKey = getApiKey();
+const ai = new GoogleGenAI({ apiKey: getApiKey() });
 
-const ai = new GoogleGenAI({ apiKey });
-
-// Simple in-memory cache for deterministic AI requests
+// ─── Cache ───────────────────────────────────────────────────────────────────
 const CACHE_KEY = 'resumeForge_ai_cache';
+
 const loadCache = (): Map<string, string> => {
   try {
     const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) {
-      return new Map(JSON.parse(cached));
-    }
+    if (cached) return new Map(JSON.parse(cached));
   } catch (e) {
     console.error("Failed to load AI cache", e);
   }
   return new Map();
 };
+
 const aiCache = loadCache();
 
-// Helper for exponential backoff
+/**
+ * Fast, non-cryptographic hash for building compact cache keys.
+ * Avoids storing massive prompt strings as localStorage keys.
+ */
+const hashString = (str: string): string => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (Math.imul(31, hash) + str.charCodeAt(i)) | 0;
+  }
+  return hash.toString(36);
+};
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Centralized wrapper function
-const callGeminiAPI = async (functionName: string, params: GenerateContentParameters, useCache: boolean = true, retryCount = 0): Promise<string> => {
-  const promptText = typeof params.contents === 'string' 
-    ? params.contents 
-    : JSON.stringify(params.contents);
+// ─── Core API Wrapper ─────────────────────────────────────────────────────────
+const callGeminiAPI = async (
+  functionName: string,
+  params: GenerateContentParameters,
+  useCache: boolean = true,
+  retryCount = 0
+): Promise<string> => {
+  const promptText =
+    typeof params.contents === 'string'
+      ? params.contents
+      : JSON.stringify(params.contents);
 
-  // Generate a cache key based on function name and prompt
-  const cacheKey = `${functionName}_${promptText}`;
+  // Use a compact hash so cache keys don't balloon in localStorage
+  const cacheKey = `${functionName}_${hashString(promptText)}`;
 
-  // Check cache first
   if (useCache && aiCache.has(cacheKey)) {
-    console.log(`[Cache Hit] Returning cached result for ${functionName}`);
+    console.log(`[Cache Hit] ${functionName}`);
     return aiCache.get(cacheKey)!;
   }
 
@@ -58,35 +82,35 @@ const callGeminiAPI = async (functionName: string, params: GenerateContentParame
     // 2. Make the API call
     const mergedParams: GenerateContentParameters = {
       ...params,
-      config: {
-        ...params.config,
-      }
+      config: { ...params.config },
     };
 
     const response = await ai.models.generateContent(mergedParams);
     const responseText = response.text || "";
 
-    // 3. Update usage tracking after API call
+    // 3. Track usage
     await trackAIUsage(functionName, mergedParams.model, promptText, responseText);
 
-    // 4. Save to cache
+    // 4. Persist to cache
     if (useCache && responseText) {
       aiCache.set(cacheKey, responseText);
-      
-      // Prevent cache from growing infinitely (simple LRU-ish behavior)
+
+      // Simple LRU eviction — keep max 50 entries
       if (aiCache.size > 50) {
         const firstKey = aiCache.keys().next().value;
         if (firstKey) aiCache.delete(firstKey);
       }
 
-      // Persist to localStorage
       localStorage.setItem(CACHE_KEY, JSON.stringify(Array.from(aiCache.entries())));
     }
 
     return responseText;
   } catch (error: any) {
-    // Handle rate limit error
-    if (error.message && error.message.includes("Please wait before making another request") && retryCount < 3) {
+    // Exponential backoff on rate limit errors (max 3 retries)
+    if (
+      error.message?.includes("Please wait before making another request") &&
+      retryCount < 3
+    ) {
       const delay = Math.pow(2, retryCount) * 1000;
       console.warn(`[Rate Limit] Retrying ${functionName} in ${delay}ms... (Attempt ${retryCount + 1})`);
       await sleep(delay);
@@ -95,6 +119,8 @@ const callGeminiAPI = async (functionName: string, params: GenerateContentParame
     throw error;
   }
 };
+
+// ─── Exported Service Functions ───────────────────────────────────────────────
 
 export const generateSummary = async (resumeContext: string, jobRole?: string): Promise<string> => {
   try {
@@ -109,7 +135,7 @@ export const generateSummary = async (resumeContext: string, jobRole?: string): 
       ${jobRole ? `Target Job Role: ${jobRole}` : ''}
 
       STRICT RULES:
-      1. Start directly with the candidate’s job title.
+      1. Start directly with the candidate's job title.
       2. Do NOT use first-person language.
       3. Do NOT use generic phrases such as "hardworking individual", "strong foundation", or "results-driven professional" unless clearly supported by measurable context.
       4. Highlight technical expertise, specialization, and value delivered.
@@ -122,12 +148,10 @@ export const generateSummary = async (resumeContext: string, jobRole?: string): 
     `;
 
     const responseText = await callGeminiAPI('generateSummary', {
-      model: 'gemini-flash-lite-latest',
+      model: MODELS.FLASH_LITE,
       contents: prompt,
-      config: {
-        thinkingConfig: { thinkingBudget: 0 }
-      }
-    }, true); // Use cache
+      config: { thinkingConfig: { thinkingBudget: 0 } },
+    }, true);
 
     return responseText || "Could not generate summary.";
   } catch (error) {
@@ -155,13 +179,13 @@ export const improveDescription = async (text: string, type: 'experience' | 'pro
     `;
 
     const responseText = await callGeminiAPI('improveDescription', {
-      model: 'gemini-flash-lite-latest',
+      model: MODELS.FLASH_LITE,
       contents: prompt,
       config: {
         thinkingConfig: { thinkingBudget: 0 },
-        temperature: 0.4
-      }
-    }, true); // Use cache
+        temperature: 0.4,
+      },
+    }, true);
 
     return responseText || text;
   } catch (error) {
@@ -198,13 +222,13 @@ export const tailorResumeToJob = async (currentResumeJSON: string, jobDescriptio
     `;
 
     const responseText = await callGeminiAPI('tailorResumeToJob', {
-      model: 'gemini-flash-lite-latest',
+      model: MODELS.FLASH_LITE,
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
-        temperature: 0.6
-      }
-    }, false); // Do not cache tailoring, as users might want different results or tweak JD slightly
+        temperature: 0.6,
+      },
+    }, false); // Don't cache — users may tweak the JD and expect fresh results
 
     return responseText || "";
   } catch (error) {
@@ -236,12 +260,12 @@ export const transformResumeForRole = async (currentResumeJSON: string, targetRo
     `;
 
     const responseText = await callGeminiAPI('transformResumeForRole', {
-      model: 'gemini-flash-lite-latest',
+      model: MODELS.FLASH_LITE,
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
-        temperature: 0.5
-      }
+        temperature: 0.5,
+      },
     });
 
     return responseText || "";
@@ -272,12 +296,9 @@ export const fitResumeToOnePage = async (currentResumeJSON: string): Promise<str
     `;
 
     const responseText = await callGeminiAPI('fitResumeToOnePage', {
-      model: 'gemini-flash-lite-latest',
+      model: MODELS.FLASH_LITE,
       contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-        
-      }
+      config: { responseMimeType: 'application/json' },
     });
 
     return responseText || "";
@@ -355,11 +376,9 @@ export const parseResumeContent = async (text: string): Promise<string> => {
     `;
 
     const responseText = await callGeminiAPI('parseResumeContent', {
-      model: 'gemini-3-flash-preview',
+      model: MODELS.FLASH, // Mid-tier: better parsing accuracy than flash-lite
       contents: prompt,
-      config: {
-        responseMimeType: 'application/json'
-      }
+      config: { responseMimeType: 'application/json' },
     });
 
     return responseText || "{}";
@@ -398,12 +417,12 @@ export const generateResumeByRole = async (role: string, level: string, jobDescr
     `;
 
     const responseText = await callGeminiAPI('generateResumeByRole', {
-      model: 'gemini-flash-lite-latest',
+      model: MODELS.FLASH_LITE,
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
-        temperature: 0.6
-      }
+        temperature: 0.6,
+      },
     });
 
     return responseText || "{}";
@@ -416,29 +435,31 @@ export const generateResumeByRole = async (role: string, level: string, jobDescr
 export const getSkillSuggestions = async (jobTitle: string, currentSkills: string[] = []): Promise<string[]> => {
   try {
     let prompt = "";
-    if (jobTitle) {
-         prompt = `
-          You are a career expert. List 15 relevant technical and soft skills for the job role: "${jobTitle}".
-          Return ONLY a JSON array of strings. Do not include markdown formatting.
-        `;
+
+    // FIX: use .trim().length to correctly handle empty string jobTitle
+    if (jobTitle && jobTitle.trim().length > 0) {
+      prompt = `
+        You are a career expert. List 15 relevant technical and soft skills for the job role: "${jobTitle}".
+        Return ONLY a JSON array of strings. Do not include markdown formatting.
+      `;
     } else if (currentSkills.length > 0) {
-        prompt = `
-          You are a career expert. Based on these skills: "${currentSkills.join(', ')}", suggest 15 related or complementary skills.
-          Return ONLY a JSON array of strings. Do not include markdown formatting.
-        `;
+      prompt = `
+        You are a career expert. Based on these skills: "${currentSkills.join(', ')}", suggest 15 related or complementary skills.
+        Return ONLY a JSON array of strings. Do not include markdown formatting.
+      `;
     } else {
-         // Fallback if no context
-         return ["Communication", "Leadership", "Problem Solving", "Teamwork", "Time Management", "Critical Thinking"];
+      // Fallback if no context provided
+      return ["Communication", "Leadership", "Problem Solving", "Teamwork", "Time Management", "Critical Thinking"];
     }
 
     const responseText = await callGeminiAPI('getSkillSuggestions', {
-      model: 'gemini-flash-lite-latest',
+      model: MODELS.FLASH_LITE,
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
-        temperature: 0.6
-      }
-    }, true); // Use cache
+        temperature: 0.6,
+      },
+    }, true);
 
     return JSON.parse(responseText || "[]");
   } catch (error) {
@@ -477,13 +498,13 @@ export const generateCoverLetter = async (
     `;
 
     const responseText = await callGeminiAPI('generateCoverLetter', {
-      model: 'gemini-flash-lite-latest',
+      model: MODELS.FLASH_LITE,
       contents: prompt,
       config: {
         thinkingConfig: { thinkingBudget: 0 },
-        temperature: 0.8
-      }
-    });
+        temperature: 0.8,
+      },
+    }, false); // FIX: don't cache — cover letters are personalized per company/role
 
     return responseText || "Error generating cover letter. Please try again.";
   } catch (error) {
@@ -520,12 +541,12 @@ export const calculateATSScore = async (resumeText: string): Promise<{ score: nu
     `;
 
     const responseText = await callGeminiAPI('calculateATSScore', {
-      model: 'gemini-flash-lite-latest',
+      model: MODELS.FLASH_LITE,
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
-        temperature: 0.2
-      }
+        temperature: 0.2,
+      },
     });
 
     return JSON.parse(responseText || '{"score": 0, "suggestions": [], "analysis": "Failed to analyze."}');
@@ -535,7 +556,8 @@ export const calculateATSScore = async (resumeText: string): Promise<{ score: nu
   }
 };
 
-export const analyzeResumeFormATS = async (resumeText: string): Promise<{ score: number; matched_keywords: string[]; missing_keywords: string[]; weak_sections: string[]; suggestion: string }> => {
+// FIX: Renamed from analyzeResumeFormATS → analyzeResumeFromATS (typo fix)
+export const analyzeResumeFromATS = async (resumeText: string): Promise<{ score: number; matched_keywords: string[]; missing_keywords: string[]; weak_sections: string[]; suggestion: string }> => {
   try {
     const prompt = `You are an ATS expert. Analyze the resume details below and return 
 ONLY a JSON response, no extra text:
@@ -550,13 +572,13 @@ ONLY a JSON response, no extra text:
 Candidate Details:
 ${resumeText}`;
 
-    const responseText = await callGeminiAPI('analyzeResumeFormATS', {
-      model: 'gemini-3.1-pro-preview',
+    const responseText = await callGeminiAPI('analyzeResumeFromATS', {
+      model: MODELS.PRO, // FIX: was 'gemini-3.1-pro-preview' (doesn't exist)
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
-        temperature: 0.2
-      }
+        temperature: 0.2,
+      },
     });
 
     return JSON.parse(responseText || '{"score": 0, "matched_keywords": [], "missing_keywords": [], "weak_sections": [], "suggestion": "Failed to analyze."}');
@@ -582,12 +604,12 @@ STRICT RULES:
 - Return the result as JSON only, no extra text:
 {
   "improvedResume": {
-    "name": "<name>",
+    "name": "<n>",
     "title": "<optimized title>",
     "summary": "<strong 3 line professional summary>",
     "skills": ["<optimized skills list>"],
     "experience": [{"company": "<company>", "role": "<role>", "startDate": "<startDate>", "endDate": "<endDate>", "description": "<rewritten experience with strong action verbs>"}],
-    "projects": [{"name": "<name>", "technologies": "<technologies>", "description": "<rewritten projects with impact focus>"}],
+    "projects": [{"name": "<n>", "technologies": "<technologies>", "description": "<rewritten projects with impact focus>"}],
     "education": [{"institution": "<institution>", "degree": "<degree>", "startDate": "<startDate>", "endDate": "<endDate>"}],
     "certifications": ["<certifications as is>"]
   },
@@ -604,12 +626,12 @@ Candidate Details:
 ${resumeText}`;
 
     const responseText = await callGeminiAPI('improveResumeWithAI', {
-      model: 'gemini-3.1-pro-preview',
+      model: MODELS.PRO, // FIX: was 'gemini-3.1-pro-preview' (doesn't exist)
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
-        temperature: 0.7
-      }
+        temperature: 0.7,
+      },
     });
 
     return JSON.parse(responseText || '{}');

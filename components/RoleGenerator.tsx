@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { Button } from './ui/Button';
-import { ArrowLeft, Sparkles, Briefcase, FileText, RefreshCw, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Sparkles, Briefcase, FileText, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 import { generateResumeByRole, parseResumeContent, transformResumeForRole } from '../services/geminiService';
 import { Resume } from '../types';
+import ResumeSkeleton from './ResumeSkeleton';
 
 interface RoleGeneratorProps {
   onGenerate: (resume: Resume) => void;
@@ -97,6 +98,26 @@ const RoleGenerator: React.FC<RoleGeneratorProps> = ({ onGenerate, onBack }) => 
   };
 
   const levels = ['Internship', 'Entry Level', 'Junior', 'Mid-Level', 'Senior'];
+
+  if (isGenerating) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 md:p-6 overflow-hidden">
+        <div className="w-full max-w-4xl">
+          <div className="text-center mb-8 animate-in fade-in zoom-in duration-700">
+            <div className="inline-flex items-center gap-3 px-4 py-2 bg-purple-100 text-purple-700 rounded-full text-sm font-bold mb-4 shadow-sm">
+              <Loader2 className="animate-spin" size={16} />
+              AI Architect at work...
+            </div>
+            <h2 className="text-3xl font-bold text-slate-800 mb-2">Gemini is crafting your resume</h2>
+            <p className="text-slate-500">Structuring your experience for maximum ATS impact.</p>
+          </div>
+          <div className="animate-in slide-in-from-bottom-10 fade-in duration-1000 fill-mode-both">
+            <ResumeSkeleton />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 md:p-6">

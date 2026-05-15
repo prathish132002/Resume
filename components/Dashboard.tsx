@@ -5,6 +5,7 @@ import { firebaseService } from '../services/firebaseService';
 import { storageService } from '../services/storageService';
 import { Button } from './ui/Button';
 import { Logo } from './Logo';
+import OnboardingTour from './OnboardingTour';
 
 interface DashboardProps {
   isAdmin?: boolean;
@@ -43,6 +44,15 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [resumeToDelete, setResumeToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showTour, setShowTour] = useState(false);
+
+  useEffect(() => {
+    // Show tour to first-time users
+    const hasSeenTour = localStorage.getItem('resumeforge_tour_seen');
+    if (!hasSeenTour) {
+      setShowTour(true);
+    }
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -374,6 +384,15 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
         </div>
+      )}
+      {/* Onboarding Tour */}
+      {showTour && (
+        <OnboardingTour 
+          onComplete={() => {
+            setShowTour(false);
+            localStorage.setItem('resumeforge_tour_seen', 'true');
+          }} 
+        />
       )}
     </div>
   );

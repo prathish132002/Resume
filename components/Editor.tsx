@@ -9,6 +9,7 @@ import { firebaseService } from '../services/firebaseService';
 import { storageService } from '../services/storageService';
 import HistoryModal from './HistoryModal';
 import { useReactToPrint } from 'react-to-print';
+import ResumeSkeleton from './ResumeSkeleton';
 
 interface EditorProps {
   emailVerified: boolean;
@@ -818,7 +819,13 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
         {/* Live Preview Canvas */}
         <div className="flex-1 overflow-auto flex justify-center p-4 md:p-8 bg-slate-500 print:bg-white print:p-0 relative">
           <div className="print:w-full" ref={componentRef}>
-             <ResumePreview resume={improvedResume || resume} template={activeTemplate} scale={previewScale} isExporting={isExporting} />
+              {(isImprovingWithAI || isCheckingATS) ? (
+                <div style={{ transform: `scale(${previewScale})`, transformOrigin: 'top center', width: '210mm', height: '297mm' }}>
+                  <ResumeSkeleton />
+                </div>
+              ) : (
+                <ResumePreview resume={improvedResume || resume} template={activeTemplate} scale={previewScale} isExporting={isExporting} />
+              )}
           </div>
           
           {/* Floating Action Bar for Improved Resume */}

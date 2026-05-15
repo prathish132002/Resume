@@ -1,4 +1,3 @@
-import { GoogleGenAI, GenerateContentParameters } from "@google/genai";
 import { checkRateLimitAndUsage, trackAIUsage } from "./aiTrackingService";
 
 // ─── Model Constants ────────────────────────────────────────────────────────
@@ -9,38 +8,6 @@ const MODELS = {
   PRO:        'gemini-2.5-pro', // Best quality — deep analysis
 } as const;
 
-// ─── API Key ────────────────────────────────────────────────────────────────
-// Support both AI Studio (process.env.API_KEY) and Vite/Vercel (import.meta.env.VITE_GEMINI_API_KEY)
-const getApiKey = () => {
-  // 1. Check import.meta.env (Standard Vite way - most reliable for Vercel)
-  // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env) {
-    // @ts-ignore
-    const key = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GEMINI_API_KEY;
-    if (key) return key;
-  }
-
-  // 2. Check process.env (AI Studio / Node / Define plugin)
-  if (typeof process !== 'undefined' && process.env) {
-    if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
-    if (process.env.VITE_GEMINI_API_KEY) return process.env.VITE_GEMINI_API_KEY;
-  }
-
-  return '';
-};
-
-let aiClient: GoogleGenAI | null = null;
-
-const getAIClient = () => {
-  if (!aiClient) {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is not configured.");
-    }
-    aiClient = new GoogleGenAI({ apiKey });
-  }
-  return aiClient;
-};
 
 // ─── Cache ───────────────────────────────────────────────────────────────────
 const CACHE_KEY = 'resumeForge_ai_cache';
@@ -84,17 +51,12 @@ const parseJSON = (text: string, fallback: any) => {
 // ─── Core API Wrapper ─────────────────────────────────────────────────────────
 const callGeminiAPI = async (
   functionName: string,
-  params: GenerateContentParameters,
-  useCache: boolean = true,
+  params: { model: string; contents: string; config?: any },
+  useCache = true,
   retryCount = 0
 ): Promise<string> => {
-  const promptText =
-    typeof params.contents === 'string'
-      ? params.contents
-      : JSON.stringify(params.contents);
-
-  // Use a compact hash so cache keys don't balloon in localStorage
-  const cacheKey = `${functionName}_${hashString(promptText)}`;
+  const promptText = params.contents;
+  const cacheKey = hashString(`${functionName}:${promptText}`);
 
   if (useCache && aiCache.has(cacheKey)) {
     console.log(`[Cache Hit] ${functionName}`);
@@ -105,28 +67,37 @@ const callGeminiAPI = async (
     // 1. Check rate limits before API call
     await checkRateLimitAndUsage();
 
-    // 2. Make the API call
-    const mergedParams: GenerateContentParameters = {
-      ...params,
-      config: { ...params.config },
-    };
+    // 2. Make the API call via our secure Proxy
+    const response = await fetch('/api/ai', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        prompt: promptText,
+        model: params.model,
+        config: params.config
+      })
+    });
 
-    const response = await getAIClient().models.generateContent(mergedParams);
-    const responseText = response.text || "";
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to call AI API');
+    }
+
+    const data = await response.json();
+    const responseText = data.text || "";
 
     // 3. Track usage
-    await trackAIUsage(functionName, mergedParams.model, promptText, responseText);
+    await trackAIUsage(functionName, params.model, promptText, responseText);
 
     // 4. Persist to cache
     if (useCache && responseText) {
       aiCache.set(cacheKey, responseText);
-
-      // Simple LRU eviction — keep max 50 entries
       if (aiCache.size > 50) {
         const firstKey = aiCache.keys().next().value;
         if (firstKey) aiCache.delete(firstKey);
       }
-
       localStorage.setItem(CACHE_KEY, JSON.stringify(Array.from(aiCache.entries())));
     }
 

@@ -1,0 +1,608 @@
+
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║         TCS NQT INTERVIEW PREPARATION — ResumeAI / ATS Resume Builder          ║
+║                  Project-Based Q&A | Know Your Project Inside Out              ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                       SECTION 0 — YOUR PROJECT AT A GLANCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+PROJECT NAME  : ResumeAI – ATS-Friendly Resume Builder
+TYPE          : Full-Stack AI-Powered Web Application
+DEPLOYED ON   : Vercel / Netlify (Production)
+
+TECH STACK SUMMARY:
+┌─────────────────────┬────────────────────────────────────────────────┐
+│ Layer               │ Technology Used                                │
+├─────────────────────┼────────────────────────────────────────────────┤
+│ Frontend Framework  │ React 19 (with TypeScript)                     │
+│ Build Tool          │ Vite 6                                         │
+│ Language            │ TypeScript (~5.8)                              │
+│ Styling             │ Tailwind CSS v4 (beta)                         │
+│ Animation Library   │ Framer Motion 12                               │
+│ Icons               │ Lucide React                                   │
+│ AI / LLM            │ Google Gemini API (@google/genai)              │
+│ AI Models Used      │ gemini-2.5-flash-lite, gemini-2.5-flash,       │
+│                     │ gemini-2.5-pro                                 │
+│ Authentication      │ Firebase Authentication (Email + Google OAuth) │
+│ Database            │ Firebase Firestore (NoSQL, with offline cache) │
+│ PDF Generation      │ jsPDF + html2canvas + pdfmake                  │
+│ PDF Parsing         │ pdfjs-dist (PDF.js)                            │
+│ Charts / Analytics  │ Recharts                                       │
+│ Print Support       │ react-to-print                                 │
+│ Environment Vars    │ .env file with Vite (import.meta.env)          │
+│ Deployment          │ Vercel + Netlify (with netlify.toml config)    │
+└─────────────────────┴────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+               SECTION 1 — CORE PROJECT FEATURES (Know these cold!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. User Authentication
+   - Email/Password signup & login via Firebase Auth
+   - Google OAuth (Sign in with Google)
+   - Email verification after signup
+   - Password reset via email
+   - Admin role-based access (admin vs regular user)
+
+2. Resume Editor
+   - Multi-section form: Personal Info, Education, Experience, Projects, Skills,
+     Certifications, Achievements
+   - Live preview with 4 templates: MODERN, MINIMAL, EXECUTIVE, ATS_CLASSIC
+   - AI-powered improvements for every section (via Gemini API)
+   - Auto-save to Firebase Firestore
+   - PDF export (multiple strategies: jsPDF + html2canvas + pdfmake)
+
+3. AI Features (Powered by Google Gemini)
+   - AI Summary Generator: Generates professional summaries
+   - Improve Description: Rewrites experience/project bullets with action verbs
+   - Tailor to Job: Adapts resume to a specific job description
+   - Role Transformer: Transforms resume for a target role
+   - Fit to One Page: Intelligently trims content to one page
+   - Skill Suggestions: Suggests relevant skills for a job title
+   - Cover Letter Generator: Writes personalized cover letters
+   - ATS Score Checker: Scores resume 0-100 with keyword analysis
+   - Resume Importer: Parses uploaded PDF resumes using AI
+
+4. ATS (Applicant Tracking System) Tools
+   - ATS Score with matched/missing keywords, weak sections, and improvement tips
+   - AI improvement suggestions specific to ATS optimization
+
+5. Role Generator
+   - Start from scratch — generates a fully sample resume for any role & level
+
+6. Admin Dashboard
+   - View all user data (admin only, role-based)
+
+7. Performance Optimizations Built In
+   - AI response caching with LRU eviction (max 50 entries in localStorage)
+   - Exponential backoff retry (3 retries on rate limit errors)
+   - Rate limiting service (aiTrackingService)
+   - Firestore offline persistence (works without internet after first load)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                      SECTION 2 — THE INTERVIEW Q&A
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+════════════════════════════════════════════════
+CATEGORY A — "Tell me about your project" Type
+════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────────────
+Q1. Tell me about your project.
+──────────────────────────────────────────────────────────────────────────────
+ANSWER (say this confidently, 1–2 minutes max):
+
+  "I built an AI-powered Resume Builder called ResumeAI. It helps job seekers
+   create ATS-optimized resumes using Google's Gemini AI. The app allows users
+   to build resumes from scratch, import existing PDFs, or generate a role-
+   specific resume automatically. It integrates Firebase for user authentication
+   and cloud storage, and uses the Gemini API to provide features like
+   AI-written summaries, job-specific tailoring, ATS scoring, cover letter
+   generation, and skill suggestions. The project is deployed on Vercel and
+   is fully production-ready with user accounts, admin controls, and
+   offline support."
+
+──────────────────────────────────────────────────────────────────────────────
+Q2. What problem does your project solve?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "Most job seekers don't know how Applicant Tracking Systems (ATS) work.
+   ATS software filters resumes before any human sees them. My project helps
+   users build resumes that pass those filters by analyzing keywords, scoring
+   their resume out of 100, and using AI to rewrite content in an ATS-friendly
+   format. It also reduces the time to build a professional resume from hours
+   to minutes by automating the writing process with AI."
+
+──────────────────────────────────────────────────────────────────────────────
+Q3. What technologies / tech stack did you use?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "The project is built with React 19 and TypeScript for the frontend,
+   bundled with Vite which is a fast modern build tool. For styling I used
+   Tailwind CSS with Framer Motion for animations. The backend services use
+   Firebase — specifically Firebase Authentication for user login and
+   Firestore (a NoSQL cloud database) for storing resumes. The AI features
+   are powered by Google's Gemini API — I used three model tiers:
+   gemini-2.5-flash-lite for fast tasks, gemini-2.5-flash for parsing,
+   and gemini-2.5-pro for deep ATS analysis. For PDF functionality I used
+   jsPDF, html2canvas, and pdfmake for export, and PDF.js for importing
+   and reading uploaded PDFs."
+
+──────────────────────────────────────────────────────────────────────────────
+Q4. Why did you choose React over other frameworks?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "React's component-based architecture was perfect for this project because
+   a resume builder has many reusable sections — each section like Education,
+   Experience, and Projects is a separate component. React's virtual DOM
+   ensures fast re-rendering whenever resume data changes, which gives a
+   smooth live-preview experience. React also has a huge ecosystem — libraries
+   like Framer Motion, Recharts, and react-to-print integrate easily with it."
+
+──────────────────────────────────────────────────────────────────────────────
+Q5. Why did you use TypeScript instead of JavaScript?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "TypeScript adds static type checking on top of JavaScript. In my project,
+   the resume data has a very strict structure — PersonalInfo, Education,
+   Experience, Projects — each defined as TypeScript interfaces. This means
+   if I accidentally pass the wrong data type to a component, TypeScript
+   catches it at compile time before the app even runs, not at runtime.
+   This reduced bugs significantly during development."
+
+──────────────────────────────────────────────────────────────────────────────
+Q6. Why did you use Firebase?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "Firebase gave me a complete backend without having to write server-side
+   code. Firebase Authentication handles secure login with both email/password
+   and Google OAuth out of the box. Firestore is a real-time NoSQL database
+   that stores resumes per user. I also enabled Firestore's offline persistence,
+   which means the app continues to work even if the user loses their internet
+   connection — data syncs back automatically when they reconnect. This was
+   important for a better user experience."
+
+══════════════════════════════════════════════════
+CATEGORY B — Technical Deep Dive Questions
+══════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────────────
+Q7. What is an API? How did you use it in your project?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "An API (Application Programming Interface) is a way for two software
+   systems to communicate. In my project, I used the Google Gemini API to
+   send prompts from my frontend app and receive AI-generated text in
+   response. I also used Firebase's SDK which acts as an API to interact
+   with the authentication and database services. Every time the user clicks
+   'Generate Summary', my app sends a structured prompt to Gemini's API
+   and displays the response to the user."
+
+──────────────────────────────────────────────────────────────────────────────
+Q8. What is Firebase Firestore? Is it SQL or NoSQL?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "Firebase Firestore is a NoSQL cloud database from Google. Unlike SQL
+   databases which store data in tables and rows, Firestore stores data as
+   documents inside collections — similar to JSON objects. For example,
+   I have a 'resumes' collection where each document represents one resume
+   with all its fields. The advantage is that it scales automatically,
+   supports real-time updates, and works offline with local caching."
+
+──────────────────────────────────────────────────────────────────────────────
+Q9. What is Authentication? How did you implement it?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "Authentication verifies the identity of a user — basically, it's the
+   login system. I implemented two methods using Firebase Authentication:
+   1) Email and password — users register, and Firebase sends a verification
+      email before they can log in.
+   2) Google OAuth — users can click 'Sign in with Google' and log in with
+      their existing Google account without creating a new password.
+   I also implemented role-based access — users with the 'admin' role in
+   Firestore can see an Admin Dashboard that regular users cannot."
+
+──────────────────────────────────────────────────────────────────────────────
+Q10. What is ATS? How does your project handle ATS scoring?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "ATS stands for Applicant Tracking System — it's software used by companies
+   to automatically scan and filter resumes before a human recruiter sees them.
+   It looks for specific keywords matching the job description. In my project,
+   I built an ATS Score Checker that sends the resume text to the Gemini AI
+   model with a detailed prompt. The AI evaluates keyword presence, formatting,
+   quantified achievements, and section clarity, then returns a score from 0
+   to 100 along with matched keywords, missing keywords, and specific
+   improvement suggestions."
+
+──────────────────────────────────────────────────────────────────────────────
+Q11. What is Vite? Why did you use it over Create React App (CRA)?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "Vite is a modern frontend build tool. It uses native ES Modules (ESM) in
+   the browser during development, which makes the dev server start almost
+   instantly — even for large projects. Create React App uses Webpack, which
+   bundles everything first before serving, making it slow for large projects.
+   Vite also produces optimized production builds using Rollup. I used Vite
+   because it significantly improved my development experience with fast
+   hot module replacement (HMR)."
+
+──────────────────────────────────────────────────────────────────────────────
+Q12. What are environment variables? Why did you use them?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "Environment variables are configuration values stored outside of code —
+   typically in a .env file. I used them to store sensitive information like
+   my Firebase API keys and Gemini API key. If I hardcoded these keys in the
+   source code and pushed it to GitHub, anyone could see and misuse them.
+   By using a .env file — which is in .gitignore so it's never committed —
+   the keys stay secret. On Vercel and Netlify, I configured these same
+   variables in the deployment settings so the production app can access them."
+
+──────────────────────────────────────────────────────────────────────────────
+Q13. What is caching? How did you implement it?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "Caching means storing the result of an expensive operation so you can
+   reuse it instead of repeating the operation. In my project, every Gemini
+   API call costs money and takes time. So I implemented a localStorage cache
+   — when the AI generates a summary, I store the result with a hash key.
+   If the exact same prompt is sent again, the cached result is returned
+   immediately without calling the API. I also implemented an LRU (Least
+   Recently Used) eviction policy — when the cache exceeds 50 entries, the
+   oldest entry is removed to prevent localStorage from overflowing."
+
+──────────────────────────────────────────────────────────────────────────────
+Q14. What is the difference between frontend and backend? What is your project?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "The frontend is everything the user sees and interacts with in the browser
+   — HTML, CSS, JavaScript. The backend is the server-side logic — databases,
+   APIs, business logic. My project is primarily a frontend application built
+   with React, but it uses Firebase as a Backend-as-a-Service (BaaS). This
+   means I did not write a traditional backend server (like Node.js or Django),
+   instead Firebase provides authentication, database, and storage services
+   that I consume directly from the frontend using their SDK."
+
+──────────────────────────────────────────────────────────────────────────────
+Q15. What is a REST API? Did you use one?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "A REST API (Representational State Transfer) is a style of API where
+   resources are accessed via HTTP methods like GET, POST, PUT, DELETE.
+   In my project, the Gemini API follows REST-like principles — I send
+   POST requests with a prompt payload and receive a JSON response with the
+   generated text. Firebase SDK also makes REST calls to Google's servers
+   under the hood, but abstracts that with JavaScript methods like
+   setDoc(), getDoc(), getDocs()."
+
+──────────────────────────────────────────────────────────────────────────────
+Q16. How does your app handle errors and failures?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "I implemented multiple layers of error handling. For the Gemini API calls,
+   I wrapped everything in try-catch blocks. If the API returns a rate limit
+   error, I implemented exponential backoff — the app waits 1 second, then
+   2, then 4 seconds before retrying (max 3 retries). Firebase operations
+   also have error handling — if saving a resume fails, the error is caught
+   and reported. This ensures the app degrades gracefully rather than
+   crashing completely."
+
+══════════════════════════════════════════════════
+CATEGORY C — Design & Architecture Questions
+══════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────────────
+Q17. How is your project structured / organized?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "I followed a feature-based folder structure:
+   - /components: All React UI components (Editor, Dashboard, Login, etc.)
+   - /services: Backend service files — firebaseConfig.ts (Firebase setup),
+     firebaseService.ts (auth + database functions), geminiService.ts
+     (all AI API calls), and aiTrackingService.ts (rate limiting + usage tracking).
+   - /hooks: Custom React hooks like useAuth.tsx for authentication state.
+   - /types.ts: All TypeScript interfaces/types in one place (Resume, Education,
+     Experience, UserProfile etc.)
+   - App.tsx: The root component that manages navigation between views."
+
+──────────────────────────────────────────────────────────────────────────────
+Q18. What is a React Hook? Which hooks did you use?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "React Hooks let you use state and lifecycle features inside functional
+   components without writing class components. I used:
+   - useState: To manage UI state like the current view, resume data,
+     loading states, and form inputs.
+   - useEffect: To run side effects — like checking if the user is logged in
+     when the app loads and redirecting them to the dashboard.
+   - I also created a custom hook called useAuth that wraps Firebase's auth
+     state listener and provides the current user and loading state to
+     any component that needs it."
+
+──────────────────────────────────────────────────────────────────────────────
+Q19. How do you manage navigation in your app? (No React Router?)
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "Instead of using React Router, I implemented a simple state-based
+   navigation using a TypeScript enum called AppView. Each view like LOGIN,
+   DASHBOARD, EDITOR, IMPORT, etc. is a value in this enum. The App component
+   holds a 'currentView' state variable, and conditionally renders the correct
+   component. This is a lightweight approach that works well for single-page
+   applications without complex routing needs."
+
+──────────────────────────────────────────────────────────────────────────────
+Q20. How does your PDF generation work?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "I used two approaches for PDF generation:
+   1) html2canvas + jsPDF: Takes a screenshot of the rendered HTML resume
+      preview and converts it to a PDF image. This is pixel-perfect but
+      the text is not selectable.
+   2) pdfmake: Generates the PDF programmatically from data — the text
+      IS selectable and searchable. This is better for ATS compatibility
+      since ATS systems need to read the text.
+   For printing, I used react-to-print which triggers the browser's native
+   print dialog with custom styles."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+         CATEGORY D — HR / Behavioral Questions About Your Project
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+──────────────────────────────────────────────────────────────────────────────
+Q21. What was the biggest challenge you faced in this project?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "The most challenging part was managing API costs and rate limits for the
+   Gemini API. Every AI call costs money, and excessive rapid requests could
+   hit rate limits. I solved this with a three-part strategy: first, I
+   implemented a caching layer using localStorage so repeated identical
+   requests never hit the API. Second, I built an AI tracking service
+   that monitors usage and enforces rate limits. Third, I chose the right
+   model tier for each task — expensive models only for deep analysis, and
+   faster/cheaper models for simple tasks. This made the project both
+   cost-efficient and reliable."
+
+──────────────────────────────────────────────────────────────────────────────
+Q22. What would you improve if you had more time?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "I would add a real-time collaborative editing feature so multiple users
+   can work on the same resume — similar to Google Docs. I would also add
+   a proper backend with Node.js to handle API calls server-side, which
+   would better protect the API keys and allow more complex business logic.
+   Additionally, I would add resume version control so users can revert to
+   any previous version of their resume, and add more resume templates."
+
+──────────────────────────────────────────────────────────────────────────────
+Q23. How did you ensure security in your project?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "Security was important to me. I stored all API keys in a .env file which
+   is listed in .gitignore — so they are never committed to GitHub.
+   For production on Vercel and Netlify, the keys are configured as
+   environment variables in the dashboard. Firebase security rules ensure
+   that users can only access their own resumes — a user cannot read or
+   modify another user's data. I also implemented email verification,
+   meaning users must verify their email address before they can save resumes."
+
+──────────────────────────────────────────────────────────────────────────────
+Q24. Did you work alone or in a team on this project?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "I built this project individually. This gave me the experience of
+   handling the full project lifecycle — from requirements and design to
+   implementation, testing, security, and deployment. I learned how to
+   manage different concerns like frontend UI, AI API integration,
+   database design, authentication, and DevOps (deployment to Vercel/Netlify)
+   all by myself. It significantly improved my ability to write modular,
+   maintainable code."
+
+──────────────────────────────────────────────────────────────────────────────
+Q25. Is your project live? Can people use it?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "Yes, the project is deployed and live on Vercel/Netlify. I configured
+   netlify.toml and vercel.json for proper SPA routing — so refreshing
+   the page doesn't show a 404 error. Users can sign up with their email
+   or Google account, build resumes, get AI suggestions, check their ATS
+   score, and download their resume as a PDF."
+
+══════════════════════════════════════════════════
+CATEGORY E — Tricky / Advanced Questions TCS Might Ask
+══════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────────────
+Q26. What is the difference between SQL and NoSQL? Why did you choose NoSQL?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "SQL databases (like MySQL, PostgreSQL) store data in structured tables with
+   fixed schemas. NoSQL databases (like Firestore, MongoDB) store data as
+   documents or key-value pairs with flexible schemas. I chose Firestore
+   (NoSQL) because resume data is hierarchical — a resume contains arrays
+   of education, experience, projects — which maps naturally to a document
+   model. Also, Firestore scales automatically and offers real-time
+   synchronization, which would be complex to implement with SQL."
+
+──────────────────────────────────────────────────────────────────────────────
+Q27. What is CORS? Did you face it?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "CORS stands for Cross-Origin Resource Sharing. It's a browser security
+   mechanism that prevents a web page from making requests to a different
+   domain unless that domain explicitly allows it. Since I was calling the
+   Google Gemini API directly from the browser (client-side), and Google
+   configures their own CORS headers to allow browser-side API calls,
+   I did not face CORS issues. However, if I had built a custom backend
+   API, I would need to configure CORS headers."
+
+──────────────────────────────────────────────────────────────────────────────
+Q28. What is lazy loading / code splitting? Did you implement it?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "Lazy loading means loading parts of the application only when they are
+   needed, rather than loading everything at once. Vite supports automatic
+   code splitting — it splits the bundle into chunks for each route/view.
+   In my app, each view like Editor, Dashboard, ATSScoreChecker etc. is a
+   separate component that can be lazy loaded using React.lazy() if needed.
+   This reduces initial load time significantly."
+
+──────────────────────────────────────────────────────────────────────────────
+Q29. What is a custom hook in React? Why did you create useAuth?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "A custom hook in React is a function that starts with 'use' and contains
+   reusable logic using other React hooks. I created useAuth to encapsulate
+   Firebase's authentication state listener — onAuthStateChanged. Instead
+   of repeating that subscription logic in every component that needs to
+   know if a user is logged in, I put it in useAuth which returns the
+   current user and loading state. Any component can then call useAuth()
+   and get that data cleanly."
+
+──────────────────────────────────────────────────────────────────────────────
+Q30. How does Google Gemini AI generate text? What is a prompt?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "Google Gemini is a Large Language Model (LLM) — an AI trained on massive
+   amounts of text data that can understand and generate human-like text.
+   A prompt is the instruction or question you send to the AI. In my project,
+   I craft detailed system prompts — for example, for generating a resume
+   summary, I tell the AI the candidate's details, the target job role, and
+   strict rules like 'do not use first-person language' and 'do not invent
+   facts'. The AI processes this and returns a well-crafted summary.
+   The quality of output depends heavily on how well the prompt is written
+   — this is called Prompt Engineering."
+
+──────────────────────────────────────────────────────────────────────────────
+Q31. What is localStorage? How did you use it?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "localStorage is a browser API that allows storing key-value pairs
+   persistently in the browser — the data survives page refreshes and
+   even browser restarts. I used localStorage to cache AI API responses.
+   When Gemini returns a result, I store it with a hash key in localStorage.
+   If the same prompt is made again, I serve the cached result without
+   making an API call. I also implement LRU eviction — when the cache hits
+   50 entries, I remove the oldest one to prevent localStorage from
+   filling up."
+
+──────────────────────────────────────────────────────────────────────────────
+Q32. What is Tailwind CSS? How is it different from regular CSS?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "Tailwind CSS is a utility-first CSS framework. Instead of writing custom
+   CSS classes, you apply pre-built utility classes directly in your HTML/JSX.
+   For example, instead of writing .button { background: blue; padding: 8px },
+   you write className='bg-blue-500 p-2'. This speeds up development and
+   avoids writing separate CSS files. Tailwind also has tree-shaking built
+   in — unused styles are removed from the production build, keeping the
+   CSS bundle very small."
+
+──────────────────────────────────────────────────────────────────────────────
+Q33. What is Framer Motion? Why did you use it?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "Framer Motion is a React animation library. It makes it very easy to add
+   smooth animations and transitions to React components using a declarative
+   syntax. I used it to add entrance animations, hover effects, and smooth
+   transitions between views in the app — for example, animating the resume
+   cards on the dashboard. It works well with React because animations are
+   tied to component lifecycle events."
+
+──────────────────────────────────────────────────────────────────────────────
+Q34. What is an API key? Is it secure to use it in the frontend?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "An API key is a unique identifier used to authenticate requests to an API.
+   Using API keys directly in the frontend (browser) is generally not ideal
+   because the key can be found by inspecting network requests. However,
+   Google's Gemini API and Firebase are designed to be used from the browser —
+   Firebase has its own security rules system (Firestore rules) to control
+   data access, and Gemini keys can have domain restrictions. I mitigated
+   the risk further by never committing keys to GitHub, using .env files
+   locally, and configuring environment variables in Vercel/Netlify."
+
+════════════════════════════════════════════════
+CATEGORY F — TCS-Specific Questions
+════════════════════════════════════════════════
+
+──────────────────────────────────────────────────────────────────────────────
+Q35. How is your project relevant to TCS and its work?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "TCS is a technology leader that builds large-scale enterprise solutions.
+   My project demonstrates my ability to integrate multiple cloud services,
+   work with AI/ML APIs, implement security best practices, and build a
+   full production-ready application. TCS works with AI tools and cloud
+   platforms extensively, and my hands-on experience with Google Cloud
+   (Firebase, Gemini API), React, TypeScript, and deployment pipelines
+   directly aligns with the kind of modern tech stack TCS uses in its
+   digital transformation projects."
+
+──────────────────────────────────────────────────────────────────────────────
+Q36. What did you learn from building this project?
+──────────────────────────────────────────────────────────────────────────────
+ANSWER:
+  "I learned how to architect a complete application independently — not just
+   write code, but think about user experience, security, performance, and
+   cost. Working with AI APIs taught me prompt engineering — how to instruct
+   an AI model precisely to get reliable output. Firebase taught me about
+   NoSQL database design and authentication flows. The biggest lesson was
+   that software engineering is not just about features — managing edge cases,
+   handling failures gracefully, securing sensitive data, and optimizing
+   for performance are equally important."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                    SECTION 3 — QUICK CHEAT SHEET (Last-minute review)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  React          → UI library, component-based, hooks (useState, useEffect)
+  TypeScript     → JS with static type checking, catches errors early
+  Vite           → Fast build tool, faster than Create React App
+  Tailwind CSS   → Utility-first CSS framework
+  Framer Motion  → React animation library
+  Firebase Auth  → Authentication service (login/signup/Google OAuth)
+  Firestore      → NoSQL cloud database, stores resumes per user
+  Gemini API     → Google's AI (LLM) for text generation (features)
+  jsPDF          → Generate PDF files in the browser from JavaScript
+  html2canvas    → Take screenshot of HTML element and convert to image
+  pdfmake        → Generate searchable, text-based PDF documents
+  PDF.js         → Parse and read PDF files in the browser
+  Recharts       → Charts library for React (used in dashboards)
+  Lucide React   → Icon library for React
+  react-to-print → Trigger browser print dialog from React
+  localStorage   → Browser storage API (used for AI response caching)
+  .env files     → Store secret API keys outside of source code
+  Vercel         → Deployment platform (frontend hosting)
+  Netlify        → Alternative deployment platform
+  ATS            → Applicant Tracking System (resume filtering software)
+  LLM            → Large Language Model (the AI behind Gemini)
+  CORS           → Cross-Origin Resource Sharing (browser security policy)
+  REST API       → HTTP-based API communication style
+  JWT            → JSON Web Token (Firebase uses this under the hood for auth)
+  NoSQL          → Database that stores documents instead of tables
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                      SECTION 4 — TIPS TO IMPRESS THE INTERVIEWER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✅ Always explain HOW your code works, not just WHAT it does.
+  ✅ Mention real problems you solved (API cost, security, offline support).
+  ✅ If asked something you don't know, say: "I haven't explored that deeply,
+     but from what I understand, it works by [best guess]. I'd research it
+     further." — honesty is respected.
+  ✅ Use terms like "I chose X because Y" — shows you make deliberate decisions.
+  ✅ Mention deployment — it shows you take projects to completion.
+  ✅ If they ask about testing — say "I did manual testing and would add unit
+     tests using Jest and React Testing Library in the next iteration."
+  ✅ Don't say "I just copied code from Stack Overflow." Say: "I researched
+     the documentation and implemented the solution after understanding it."
+  ✅ Be enthusiastic — interviewers notice when candidates are genuinely
+     proud of their work.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+                             GOOD LUCK FOR YOUR TCS NQT!
+                  You built something real. Now just explain it well. 🚀
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

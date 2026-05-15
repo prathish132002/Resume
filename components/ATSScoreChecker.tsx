@@ -66,6 +66,11 @@ const ATSScoreChecker: React.FC<ATSScoreCheckerProps> = ({ onBack }) => {
         throw new Error('Could not extract text from the PDF. It might be an image-based PDF.');
       }
       
+      // Prevent massive documents (e.g. 20+ pages) to save tokens
+      if (text.length > 8000) {
+        throw new Error('Resume is too long (Max 8,000 characters). Please upload a standard 1-3 page resume.');
+      }
+      
       const analysisResult = await calculateATSScore(text);
       setResult(analysisResult);
       setLastProcessedFile(file);

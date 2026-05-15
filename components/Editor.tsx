@@ -4,7 +4,7 @@ import { TEMPLATES } from '../constants';
 import ResumePreview from './ResumePreview';
 import { Button } from './ui/Button';
 import { Plus, Trash2, Wand2, ChevronDown, ChevronUp, Download, ArrowLeft, Save, X, Layout, Lightbulb, PlusCircle, History, Loader2, Scissors, FileText } from 'lucide-react';
-import { generateSummary, improveDescription, getSkillSuggestions, fitResumeToOnePage, analyzeResumeFromATS, improveResumeWithAI } from '../services/geminiService';
+import { generateSummary, improveDescription, getSkillSuggestions, analyzeResumeFromATS, improveResumeWithAI } from '../services/geminiService';
 import { firebaseService } from '../services/firebaseService';
 import { storageService } from '../services/storageService';
 import HistoryModal from './HistoryModal';
@@ -23,7 +23,6 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [previewScale, setPreviewScale] = useState(0.8);
   const [isSaving, setIsSaving] = useState(false);
-  const [isFitting, setIsFitting] = useState(false);
   const [atsScore, setAtsScore] = useState<number | null>(null);
   const [atsMatchedKeywords, setAtsMatchedKeywords] = useState<string[]>([]);
   const [atsMissingKeywords, setAtsMissingKeywords] = useState<string[]>([]);
@@ -68,30 +67,6 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
     }));
   };
 
-  const handleFitToOnePage = async () => {
-    setIsFitting(true);
-    try {
-      const jsonString = await fitResumeToOnePage(JSON.stringify(resume));
-      const cleanJson = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
-      const fittedResume = JSON.parse(cleanJson);
-      
-      setResume(prev => ({
-        ...prev,
-        personalInfo: { ...prev.personalInfo, summary: fittedResume.personalInfo.summary },
-        experience: fittedResume.experience.map((e: Experience, idx: number) => ({
-             ...e, 
-             id: prev.experience[idx]?.id || Math.random().toString(36).substr(2, 9) 
-        })),
-        projects: fittedResume.projects.map((p: any, idx: number) => ({
-             ...p,
-             id: prev.projects[idx]?.id || Math.random().toString(36).substr(2, 9)
-        }))
-      }));
-    } catch (e) {
-      alert("Failed to fit resume to one page. Please try again.");
-    }
-    setIsFitting(false);
-  };
 
   const handleSaveResume = async () => {
     setIsSaving(true);
@@ -214,6 +189,15 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
       Certifications: ${resume.certifications.join(', ')}
       Achievements: ${resume.achievements.join(', ')}
     `;
+  };
+
+  const isResumeEmpty = () => {
+    const hasName = resume.personalInfo.fullName.trim().length > 0;
+    const hasSummary = resume.personalInfo.summary.trim().length > 0;
+    const hasExperience = resume.experience.length > 0 && resume.experience.some(exp => exp.company.trim() || exp.role.trim());
+    const hasSkills = resume.skills.length > 0 && resume.skills.some(skill => skill.trim());
+    
+    return !hasName && !hasSummary && !hasExperience && !hasSkills;
   };
 
   // Initialize ATS state from resume if it exists
@@ -429,20 +413,6 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
                 </div>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-2">
-                <Button 
-                variant="secondary" 
-                size="sm" 
-                icon={<Scissors size={14}/>} 
-                onClick={handleFitToOnePage}
-                className="w-full text-center justify-center text-xs"
-                disabled={!emailVerified || isFitting}
-                isLoading={isFitting}
-                title={!emailVerified ? "Verify email to use AI features" : "Intelligently trim content to fit on one page"}
-                >
-                Fit to 1 Page
-                </Button>
-            </div>
         </div>
 
         {/* Scrollable Form Area */}
@@ -715,8 +685,9 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
                  size="sm" 
                  onClick={handleCheckATSScore}
                  isLoading={isCheckingATS}
-                 disabled={!!improvedResume || getResumeHash(resume) === lastAtsCheckedHash}
+                 disabled={!!improvedResume || getResumeHash(resume) === lastAtsCheckedHash || isResumeEmpty()}
                  className="flex-1"
+                 title={isResumeEmpty() ? "Please add some details to your resume first" : "Check ATS Score"}
                >
                  Check ATS Score
                </Button>
@@ -725,8 +696,9 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
                  size="sm" 
                  onClick={handleImproveWithAI}
                  isLoading={isImprovingWithAI}
-                 disabled={!atsScoreChecked || !!improvedResume || getResumeHash(resume) === lastAiImprovedHash}
+                 disabled={!atsScoreChecked || !!improvedResume || getResumeHash(resume) === lastAiImprovedHash || isResumeEmpty()}
                  className="flex-1"
+                 title={isResumeEmpty() ? "Please add some details to your resume first" : "Improve with AI"}
                >
                  Improve with AI
                </Button>

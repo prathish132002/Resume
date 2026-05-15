@@ -202,15 +202,18 @@ const Dashboard: React.FC<DashboardProps> = ({
               </div>
            </button>
 
-           <button onClick={onImport} className="p-6 bg-white border border-slate-200 text-slate-700 rounded-xl hover:border-emerald-500 hover:text-emerald-600 hover:shadow-md transition-all flex flex-col items-center text-center gap-3 group">
-              <div className="bg-emerald-50 p-3 rounded-full text-emerald-600 group-hover:scale-110 transition-transform">
-                <Upload size={24} />
-              </div>
-              <div>
-                <span className="block font-bold">Import Resume</span>
-                <span className="text-slate-400 text-xs group-hover:text-emerald-500">From text</span>
-              </div>
-           </button>
+           {/* Hiding Import Resume feature for now as requested */}
+           {false && (
+             <button onClick={onImport} className="p-6 bg-white border border-slate-200 text-slate-700 rounded-xl hover:border-emerald-500 hover:text-emerald-600 hover:shadow-md transition-all flex flex-col items-center text-center gap-3 group">
+                <div className="bg-emerald-50 p-3 rounded-full text-emerald-600 group-hover:scale-110 transition-transform">
+                  <Upload size={24} />
+                </div>
+                <div>
+                  <span className="block font-bold">Import Resume</span>
+                  <span className="text-slate-400 text-xs group-hover:text-emerald-500">From text</span>
+                </div>
+             </button>
+           )}
 
            <button 
              onClick={onGenerate} 

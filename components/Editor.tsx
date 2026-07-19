@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Resume, TemplateType, Experience } from '../types';
 import { TEMPLATES } from '../constants';
+import { findRoleSkills } from '../constants/roleSkills';
 import ResumePreview from './ResumePreview';
 import { Button } from './ui/Button';
-import { Plus, Trash2, Wand2, ChevronDown, ChevronUp, Download, ArrowLeft, Save, X, Layout, Lightbulb, PlusCircle, History, Loader2, Scissors, FileText } from 'lucide-react';
+import { Plus, Trash2, Wand2, ChevronDown, ChevronUp, Download, ArrowLeft, Save, X, Layout, Lightbulb, PlusCircle, History, Loader2, Scissors, FileText, GripVertical, ArrowUp, ArrowDown, Palette, Check, AlertTriangle } from 'lucide-react';
 import { generateSummary, improveDescription, getSkillSuggestions, analyzeResumeFromATS, improveResumeWithAI } from '../services/geminiService';
 import { firebaseService } from '../services/firebaseService';
 import { storageService } from '../services/storageService';
@@ -18,12 +19,23 @@ interface EditorProps {
   onBack: () => void;
 }
 
+const ACCENT_COLORS = [
+  { name: 'Blue', color: '#2563eb' },
+  { name: 'Green', color: '#16a34a' },
+  { name: 'Purple', color: '#9333ea' },
+  { name: 'Rose', color: '#e11d48' },
+  { name: 'Slate', color: '#334155' },
+  { name: 'Amber', color: '#d97706' },
+];
+
 const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBack }) => {
   const [activeTemplate, setActiveTemplate] = useState<TemplateType>(TemplateType.ATS_CLASSIC);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [previewScale, setPreviewScale] = useState(0.8);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAutosaving, setIsAutosaving] = useState(false);
+  const [lastSavedTimestamp, setLastSavedTimestamp] = useState<number | null>(Date.now());
   const [atsScore, setAtsScore] = useState<number | null>(null);
   const [atsMatchedKeywords, setAtsMatchedKeywords] = useState<string[]>([]);
   const [atsMissingKeywords, setAtsMissingKeywords] = useState<string[]>([]);
@@ -34,6 +46,11 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
   const [isImprovingWithAI, setIsImprovingWithAI] = useState(false);
   const [atsScoreChecked, setAtsScoreChecked] = useState(false);
   const [viewMode, setViewMode] = useState<'edit' | 'preview'>('edit');
+  const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null);
+
+  // Styling & Customization state
+  const [compactMode, setCompactMode] = useState(false);
+  const [accentColor, setAccentColor] = useState('#2563eb');
   
   // Improved Resume State
   const [improvedResume, setImprovedResume] = useState<Resume | null>(null);
@@ -42,6 +59,31 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
   // Skill Suggestion State
   const [suggestedSkills, setSuggestedSkills] = useState<string[]>([]);
   const [isSuggestingSkills, setIsSuggestingSkills] = useState(false);
+
+  // Debounced resume state for 300ms live preview optimization
+  const [debouncedResume, setDebouncedResume] = useState<Resume>(resume);
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedResume(resume), 300);
+    return () => clearTimeout(handler);
+  }, [resume]);
+
+  // Drag to reorder state
+  const [draggedItem, setDraggedItem] = useState<{ section: 'education' | 'experience' | 'projects'; index: number } | null>(null);
+
+  // Pre-stored role skills auto-populator
+  useEffect(() => {
+    const jobTitle = resume.personalInfo.location;
+    if (jobTitle && jobTitle.trim()) {
+      const preStored = findRoleSkills(jobTitle);
+      if (preStored && preStored.length > 0) {
+        const existingLower = (resume.skills || []).map(s => s.trim().toLowerCase());
+        const filtered = preStored.filter(s => !existingLower.includes(s.toLowerCase()));
+        if (filtered.length > 0) {
+          setSuggestedSkills(filtered);
+        }
+      }
+    }
+  }, [resume.personalInfo.location]);
 
   // Hash state to track changes
   const getResumeHash = (r: Resume) => {
@@ -82,8 +124,85 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
       setIsSaving(false);
     }
   };
-  
+
+  // 1-minute Autosave
+  useEffect(() => {
+    const autoSaveInterval = setInterval(async () => {
+      const currentHash = getResumeHash(resume);
+      if (currentHash !== lastSavedHash && !isSaving && !isAutosaving) {
+        setIsAutosaving(true);
+        try {
+          await firebaseService.saveResume(resume);
+          setLastSavedHash(currentHash);
+          setLastSavedTimestamp(Date.now());
+        } catch (err) {
+          console.error('Autosave error:', err);
+        } finally {
+          setIsAutosaving(false);
+        }
+      }
+    }, 60000); // 1 minute auto-save
+
+    return () => clearInterval(autoSaveInterval);
+  }, [resume, lastSavedHash, isSaving, isAutosaving]);
+
+  // AI Input Validator
+  const validateAIInput = (): boolean => {
+    const hasName = resume.personalInfo.fullName.trim().length > 0;
+    const hasContent = (resume.experience && resume.experience.length > 0) || 
+                       (resume.skills && resume.skills.some(s => s.trim().length > 0)) ||
+                       (resume.education && resume.education.length > 0);
+    if (!hasName && !hasContent) {
+      setAiErrorMessage("Please add your name and at least one entry (Experience, Skills, or Education) before using AI.");
+      return false;
+    }
+    setAiErrorMessage(null);
+    return true;
+  };
+
+  // Reorder handlers (Up/Down + HTML5 Drag)
+  const moveItem = (section: 'education' | 'experience' | 'projects', index: number, direction: 'up' | 'down') => {
+    setResume(prev => {
+      const list = [...prev[section]] as any[];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= list.length) return prev;
+      const temp = list[index];
+      list[index] = list[targetIndex];
+      list[targetIndex] = temp;
+      return { ...prev, [section]: list };
+    });
+  };
+
+  const handleDragStart = (section: 'education' | 'experience' | 'projects', index: number) => {
+    setDraggedItem({ section, index });
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (section: 'education' | 'experience' | 'projects', dropIndex: number) => {
+    if (!draggedItem || draggedItem.section !== section) return;
+    const startIndex = draggedItem.index;
+    if (startIndex === dropIndex) return;
+
+    setResume(prev => {
+      const list = [...prev[section]] as any[];
+      const [removed] = list.splice(startIndex, 1);
+      list.splice(dropIndex, 0, removed);
+      return { ...prev, [section]: list };
+    });
+    setDraggedItem(null);
+  };
+
+  const calculatePageEstimate = () => {
+    const totalChars = JSON.stringify(resume).length;
+    const estimated = (totalChars / 2600).toFixed(1);
+    return Math.max(1.0, parseFloat(estimated));
+  };
+
   const handleGetSkillSuggestions = async () => {
+    if (!validateAIInput()) return;
     setIsSuggestingSkills(true);
     const jobTitle = resume.personalInfo.location; 
     const suggestions = await getSkillSuggestions(jobTitle, resume.skills);
@@ -167,13 +286,24 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
     contentRef: componentRef,
     documentTitle: resume.personalInfo.fullName || 'resume',
     pageStyle: `
-      @page { size: A4; margin: 10mm; }
+      @page { size: A4; margin: 6mm; }
       @media print {
         body { -webkit-print-color-adjust: exact; }
         .resume-section { break-inside: avoid; margin-bottom: 5px; }
       }
     `,
   });
+
+  // FIX: On mobile the preview pane is CSS-hidden when the user is on the "Edit" tab.
+  // Calling handlePrint() directly would capture a hidden DOM node → blank PDF.
+  // This wrapper switches to preview mode first, waits for a repaint, then prints.
+  const handleExportPDF = () => {
+    setViewMode('preview');     // make componentRef visible in the DOM
+    setShowExportModal(false);  // close the modal so it doesn't appear in print
+    setTimeout(() => {
+      handlePrint();
+    }, 350);                    // allow React to repaint the preview before printing
+  };
 
   const resumeToText = (resume: Resume): string => {
     return `
@@ -386,7 +516,10 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
                         placeholder="Resume Name"
                     />
                 </div>
-                <div className="flex gap-2 justify-between md:justify-end">
+                <div className="flex items-center gap-2 justify-between md:justify-end">
+                    <span className="text-xs text-slate-400 font-medium hidden md:inline">
+                      {isAutosaving ? '● Autosaving...' : (getResumeHash(resume) === lastSavedHash ? '✓ Saved' : '● Unsaved')}
+                    </span>
                     <Button 
                     variant="ghost" 
                     size="sm" 
@@ -417,37 +550,50 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
         </div>
 
         {/* Scrollable Form Area */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 md:p-6 space-y-4 sm:space-y-5 md:space-y-6 scrollbar-hide">
+
+          {/* AI Validation Error Alert Banner */}
+          {aiErrorMessage && (
+            <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg flex items-center justify-between text-xs animate-shake">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={16} className="text-red-500 flex-shrink-0" />
+                <span>{aiErrorMessage}</span>
+              </div>
+              <button onClick={() => setAiErrorMessage(null)} className="text-red-400 hover:text-red-600 p-1">
+                <X size={14} />
+              </button>
+            </div>
+          )}
           
           {/* Personal Info */}
-          <div className="border rounded-lg p-4 bg-slate-50">
-             <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleSection('personal')}>
-                <h3 className="font-bold text-slate-700">Personal Details</h3>
-                {expandedSection === 'personal' ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+          <div className="border border-slate-200/90 rounded-xl p-3.5 sm:p-4 bg-slate-50/80 shadow-xs transition-all">
+             <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('personal')}>
+                <h3 className="font-bold text-sm sm:text-base text-slate-800">Personal Details</h3>
+                {expandedSection === 'personal' ? <ChevronUp size={16} className="text-slate-500"/> : <ChevronDown size={16} className="text-slate-500"/>}
              </div>
              
              {expandedSection === 'personal' && (
-               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <input className="border p-2 rounded" placeholder="Full Name" name="fullName" value={resume.personalInfo.fullName || ''} onChange={handlePersonalInfoChange} />
-                 <input className="border p-2 rounded" placeholder="Job Title (e.g. Software Engineer)" name="location" value={resume.personalInfo.location || ''} onChange={handlePersonalInfoChange} />
-                 <input className="border p-2 rounded" placeholder="Email" name="email" value={resume.personalInfo.email || ''} onChange={handlePersonalInfoChange} />
-                 <input className="border p-2 rounded" placeholder="Phone" name="phone" value={resume.personalInfo.phone || ''} onChange={handlePersonalInfoChange} />
-                 <input className="border p-2 rounded" placeholder="LinkedIn URL" name="linkedin" value={resume.personalInfo.linkedin || ''} onChange={handlePersonalInfoChange} />
-                 <input className="border p-2 rounded" placeholder="Portfolio URL" name="portfolio" value={resume.personalInfo.portfolio || ''} onChange={handlePersonalInfoChange} />
-                 <input className="border p-2 rounded" placeholder="GitHub URL" name="githubUrl" value={resume.personalInfo.githubUrl || ''} onChange={handlePersonalInfoChange} />
+               <div className="mt-3.5 sm:mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3.5">
+                 <input className="border border-slate-200 p-2 sm:p-2.5 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full transition-all" placeholder="Full Name" name="fullName" value={resume.personalInfo.fullName || ''} onChange={handlePersonalInfoChange} />
+                 <input className="border border-slate-200 p-2 sm:p-2.5 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full transition-all" placeholder="Job Title (e.g. Software Engineer)" name="location" value={resume.personalInfo.location || ''} onChange={handlePersonalInfoChange} />
+                 <input className="border border-slate-200 p-2 sm:p-2.5 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full transition-all" placeholder="Email" name="email" value={resume.personalInfo.email || ''} onChange={handlePersonalInfoChange} />
+                 <input className="border border-slate-200 p-2 sm:p-2.5 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full transition-all" placeholder="Phone" name="phone" value={resume.personalInfo.phone || ''} onChange={handlePersonalInfoChange} />
+                 <input className="border border-slate-200 p-2 sm:p-2.5 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full transition-all" placeholder="LinkedIn URL" name="linkedin" value={resume.personalInfo.linkedin || ''} onChange={handlePersonalInfoChange} />
+                 <input className="border border-slate-200 p-2 sm:p-2.5 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full transition-all" placeholder="Portfolio URL" name="portfolio" value={resume.personalInfo.portfolio || ''} onChange={handlePersonalInfoChange} />
+                 <input className="border border-slate-200 p-2 sm:p-2.5 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full transition-all" placeholder="GitHub URL" name="githubUrl" value={resume.personalInfo.githubUrl || ''} onChange={handlePersonalInfoChange} />
                   <div className="col-span-full">
                     <div className="flex justify-between mb-1">
-                      <label className="text-sm text-slate-600">Professional Summary</label>
+                      <label className="text-xs sm:text-sm text-slate-600 font-medium">Professional Summary</label>
                     </div>
                     <textarea 
-                      className="w-full border p-2 rounded h-24 text-sm" 
+                      className="w-full border border-slate-200 p-2.5 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none h-24 transition-all" 
                       placeholder="Brief overview of your career..." 
                       name="summary" 
                       value={resume.personalInfo.summary} 
                       onChange={handlePersonalInfoChange} 
                       maxLength={1000}
                     />
-                    <div className="text-right text-[10px] text-slate-400">
+                    <div className="text-right text-[10px] text-slate-400 mt-1">
                       {resume.personalInfo.summary.length} / 1000
                     </div>
                  </div>
@@ -456,24 +602,63 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
           </div>
 
           {/* Experience */}
-          <div className="border rounded-lg p-4 bg-slate-50">
-             <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleSection('experience')}>
-                <h3 className="font-bold text-slate-700">Experience</h3>
-                {expandedSection === 'experience' ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+          <div className="border border-slate-200/90 rounded-xl p-3.5 sm:p-4 bg-slate-50/80 shadow-xs transition-all">
+             <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('experience')}>
+                <h3 className="font-bold text-sm sm:text-base text-slate-800">Experience</h3>
+                {expandedSection === 'experience' ? <ChevronUp size={16} className="text-slate-500"/> : <ChevronDown size={16} className="text-slate-500"/>}
              </div>
              
              {expandedSection === 'experience' && (
-               <div className="mt-4 space-y-4">
+               <div className="mt-3.5 sm:mt-4 space-y-3.5">
                  {resume.experience.map((exp, index) => (
-                   <div key={exp.id} className="p-3 bg-white border rounded shadow-sm relative group">
-                      <button onClick={() => removeItem('experience', exp.id)} className="absolute top-2 right-2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Trash2 size={16} />
-                      </button>
-                      <div className="grid grid-cols-2 gap-2 mb-2">
-                        <input className="border p-1.5 rounded text-sm" placeholder="Company" value={exp.company} onChange={(e) => updateItem('experience', exp.id, 'company', e.target.value)} />
-                        <input className="border p-1.5 rounded text-sm" placeholder="Role" value={exp.role} onChange={(e) => updateItem('experience', exp.id, 'role', e.target.value)} />
-                        <input className="border p-1.5 rounded text-sm" placeholder="Start Date" value={exp.startDate} onChange={(e) => updateItem('experience', exp.id, 'startDate', e.target.value)} />
-                        <input className="border p-1.5 rounded text-sm" placeholder="End Date" value={exp.endDate} onChange={(e) => updateItem('experience', exp.id, 'endDate', e.target.value)} />
+                   <div 
+                     key={exp.id} 
+                     draggable 
+                     onDragStart={() => handleDragStart('experience', index)}
+                     onDragOver={handleDragOver}
+                     onDrop={() => handleDrop('experience', index)}
+                     className="p-3 bg-white border border-slate-200 rounded-lg shadow-xs relative group hover:border-blue-400 transition-all cursor-move space-y-2.5"
+                   >
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2 gap-2">
+                        <div className="flex items-center gap-1.5 text-slate-500 text-xs font-semibold truncate">
+                          <GripVertical size={16} className="cursor-grab active:cursor-grabbing text-slate-400 shrink-0" />
+                          <span className="truncate">Position {index + 1}</span>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button 
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); moveItem('experience', index, 'up'); }}
+                            disabled={index === 0}
+                            className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30 rounded-md hover:bg-slate-100 transition-colors"
+                            title="Move Up"
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); moveItem('experience', index, 'down'); }}
+                            disabled={index === resume.experience.length - 1}
+                            className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30 rounded-md hover:bg-slate-100 transition-colors"
+                            title="Move Down"
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); removeItem('experience', exp.id); }}
+                            className="p-1 text-red-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors ml-1"
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <input className="border border-slate-200 p-2 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full" placeholder="Company" value={exp.company} onChange={(e) => updateItem('experience', exp.id, 'company', e.target.value)} />
+                        <input className="border border-slate-200 p-2 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full" placeholder="Role" value={exp.role} onChange={(e) => updateItem('experience', exp.id, 'role', e.target.value)} />
+                        <input className="border border-slate-200 p-2 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full" placeholder="Start Date" value={exp.startDate} onChange={(e) => updateItem('experience', exp.id, 'startDate', e.target.value)} />
+                        <input className="border border-slate-200 p-2 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full" placeholder="End Date" value={exp.endDate} onChange={(e) => updateItem('experience', exp.id, 'endDate', e.target.value)} />
                       </div>
                       <div className="relative">
                         <textarea 
@@ -497,28 +682,66 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
           </div>
 
           {/* Education */}
-          <div className="border rounded-lg p-4 bg-slate-50">
-             <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleSection('education')}>
-                <h3 className="font-bold text-slate-700">Education</h3>
-                {expandedSection === 'education' ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+          <div className="border border-slate-200/90 rounded-xl p-3.5 sm:p-4 bg-slate-50/80 shadow-xs transition-all">
+             <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('education')}>
+                <h3 className="font-bold text-sm sm:text-base text-slate-800">Education</h3>
+                {expandedSection === 'education' ? <ChevronUp size={16} className="text-slate-500"/> : <ChevronDown size={16} className="text-slate-500"/>}
              </div>
              
              {expandedSection === 'education' && (
-               <div className="mt-4 space-y-4">
-                 {resume.education.map((edu) => (
-                   <div key={edu.id} className="p-3 bg-white border rounded shadow-sm relative group">
-                      <button onClick={() => removeItem('education', edu.id)} className="absolute top-2 right-2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100">
-                        <Trash2 size={16} />
-                      </button>
-                      <div className="grid grid-cols-1 gap-2">
-                        <input className="border p-1.5 rounded text-sm" placeholder="Institution" value={edu.institution} onChange={(e) => updateItem('education', edu.id, 'institution', e.target.value)} />
-                        <input className="border p-1.5 rounded text-sm" placeholder="Degree" value={edu.degree} onChange={(e) => updateItem('education', edu.id, 'degree', e.target.value)} />
-                        <div className="grid grid-cols-2 gap-2">
-                          <input className="border p-1.5 rounded text-sm" placeholder="Start Date" value={edu.startDate} onChange={(e) => updateItem('education', edu.id, 'startDate', e.target.value)} />
-                          <input className="border p-1.5 rounded text-sm" placeholder="End Date" value={edu.endDate} onChange={(e) => updateItem('education', edu.id, 'endDate', e.target.value)} />
+               <div className="mt-3.5 sm:mt-4 space-y-3.5">
+                 {resume.education.map((edu, index) => (
+                   <div 
+                     key={edu.id} 
+                     draggable 
+                     onDragStart={() => handleDragStart('education', index)}
+                     onDragOver={handleDragOver}
+                     onDrop={() => handleDrop('education', index)}
+                     className="p-3 bg-white border border-slate-200 rounded-lg shadow-xs relative group hover:border-blue-400 transition-all cursor-move space-y-2.5"
+                   >
+                      <div className="flex items-center justify-between border-b border-slate-100 pb-2 gap-2">
+                        <div className="flex items-center gap-1.5 text-slate-500 text-xs font-semibold truncate">
+                          <GripVertical size={16} className="cursor-grab active:cursor-grabbing text-slate-400 shrink-0" />
+                          <span className="truncate">Education {index + 1}</span>
                         </div>
-                        {/* New Grade Input */}
-                         <input className="border p-1.5 rounded text-sm" placeholder="Grade/Marks (e.g. 3.8 GPA)" value={edu.gpa || ''} onChange={(e) => updateItem('education', edu.id, 'gpa', e.target.value)} />
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button 
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); moveItem('education', index, 'up'); }}
+                            disabled={index === 0}
+                            className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30 rounded-md hover:bg-slate-100 transition-colors"
+                            title="Move Up"
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); moveItem('education', index, 'down'); }}
+                            disabled={index === resume.education.length - 1}
+                            className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30 rounded-md hover:bg-slate-100 transition-colors"
+                            title="Move Down"
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); removeItem('education', edu.id); }}
+                            className="p-1 text-red-400 hover:text-red-600 rounded-md hover:bg-red-50 transition-colors ml-1"
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2.5">
+                        <input className="border border-slate-200 p-2 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full transition-all" placeholder="Institution" value={edu.institution} onChange={(e) => updateItem('education', edu.id, 'institution', e.target.value)} />
+                        <input className="border border-slate-200 p-2 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full transition-all" placeholder="Degree / Course" value={edu.degree} onChange={(e) => updateItem('education', edu.id, 'degree', e.target.value)} />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                          <input className="border border-slate-200 p-2 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full transition-all" placeholder="Start Date" value={edu.startDate} onChange={(e) => updateItem('education', edu.id, 'startDate', e.target.value)} />
+                          <input className="border border-slate-200 p-2 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full transition-all" placeholder="End Date" value={edu.endDate} onChange={(e) => updateItem('education', edu.id, 'endDate', e.target.value)} />
+                        </div>
+                        <input className="border border-slate-200 p-2 rounded-lg text-xs sm:text-sm bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none w-full transition-all" placeholder="Grade/Marks (e.g. 3.8 GPA)" value={edu.gpa || ''} onChange={(e) => updateItem('education', edu.id, 'gpa', e.target.value)} />
                       </div>
                    </div>
                  ))}
@@ -530,19 +753,58 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
           </div>
           
            {/* Projects */}
-           <div className="border rounded-lg p-4 bg-slate-50">
-             <div className="flex justify-between items-center cursor-pointer" onClick={() => toggleSection('projects')}>
-                <h3 className="font-bold text-slate-700">Projects</h3>
-                {expandedSection === 'projects' ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+           <div className="border border-slate-200/90 rounded-xl p-3.5 sm:p-4 bg-slate-50/80 shadow-xs transition-all">
+             <div className="flex justify-between items-center cursor-pointer select-none" onClick={() => toggleSection('projects')}>
+                <h3 className="font-bold text-sm sm:text-base text-slate-800">Projects</h3>
+                {expandedSection === 'projects' ? <ChevronUp size={16} className="text-slate-500"/> : <ChevronDown size={16} className="text-slate-500"/>}
              </div>
              
              {expandedSection === 'projects' && (
                <div className="mt-4 space-y-4">
-                 {resume.projects.map((proj) => (
-                   <div key={proj.id} className="p-3 bg-white border rounded shadow-sm relative group">
-                      <button onClick={() => removeItem('projects', proj.id)} className="absolute top-2 right-2 text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100">
-                        <Trash2 size={16} />
-                      </button>
+                 {resume.projects.map((proj, index) => (
+                   <div 
+                     key={proj.id} 
+                     draggable 
+                     onDragStart={() => handleDragStart('projects', index)}
+                     onDragOver={handleDragOver}
+                     onDrop={() => handleDrop('projects', index)}
+                     className="p-3 bg-white border rounded shadow-sm relative group hover:border-blue-300 transition-all cursor-move"
+                   >
+                      <div className="flex items-center justify-between border-b pb-2 mb-2">
+                        <div className="flex items-center gap-1 text-slate-400 text-xs font-medium">
+                          <GripVertical size={16} className="cursor-grab active:cursor-grabbing text-slate-400" />
+                          <span>Project {index + 1}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button 
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); moveItem('projects', index, 'up'); }}
+                            disabled={index === 0}
+                            className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30 rounded hover:bg-slate-100"
+                            title="Move Up"
+                          >
+                            <ArrowUp size={14} />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); moveItem('projects', index, 'down'); }}
+                            disabled={index === resume.projects.length - 1}
+                            className="p-1 text-slate-400 hover:text-blue-600 disabled:opacity-30 rounded hover:bg-slate-100"
+                            title="Move Down"
+                          >
+                            <ArrowDown size={14} />
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); removeItem('projects', proj.id); }}
+                            className="p-1 text-red-400 hover:text-red-600 rounded hover:bg-red-50 ml-1"
+                            title="Delete"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+
                       <div className="grid grid-cols-1 gap-2 mb-2">
                         <input className="border p-1.5 rounded text-sm" placeholder="Project Name" value={proj.name} onChange={(e) => updateItem('projects', proj.id, 'name', e.target.value)} />
                         <input className="border p-1.5 rounded text-sm" placeholder="Tech Stack (e.g. React, Node)" value={proj.technologies} onChange={(e) => updateItem('projects', proj.id, 'technologies', e.target.value)} />
@@ -797,7 +1059,7 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
       <div className={`${viewMode === 'preview' ? 'flex' : 'hidden'} lg:flex lg:w-1/2 bg-slate-500 h-full flex-col overflow-hidden`}>
         {/* Toolbar */}
         <div className="bg-slate-800 text-white p-2 md:p-3 flex flex-col sm:flex-row justify-between items-center gap-2 shadow-md z-20">
-           <div className="flex gap-1 md:gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-hide">
+           <div className="flex items-center gap-1 md:gap-2 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-hide">
              {TEMPLATES.map(t => (
                <button 
                 key={t.id}
@@ -808,11 +1070,42 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
                </button>
              ))}
            </div>
-           <div className="flex items-center gap-2 text-[10px] md:text-xs ml-auto sm:ml-0">
-              <span className="text-slate-400">Zoom</span>
-              <button onClick={() => setPreviewScale(Math.max(0.4, previewScale - 0.1))} className="px-2 py-1 bg-slate-700 rounded">-</button>
-              <span className="w-8 text-center">{Math.round(previewScale * 100)}%</span>
-              <button onClick={() => setPreviewScale(Math.min(1.5, previewScale + 0.1))} className="px-2 py-1 bg-slate-700 rounded">+</button>
+           
+           <div className="flex items-center gap-2 text-[10px] md:text-xs ml-auto sm:ml-0 flex-wrap justify-end">
+              {/* Color Preset Selector */}
+              <div className="flex items-center gap-1 bg-slate-700 px-1.5 py-1 rounded">
+                <Palette size={12} className="text-slate-400" />
+                {ACCENT_COLORS.map(c => (
+                  <button
+                    key={c.color}
+                    onClick={() => setAccentColor(c.color)}
+                    style={{ backgroundColor: c.color }}
+                    title={c.name}
+                    className={`w-3.5 h-3.5 rounded-full transition-transform ${accentColor === c.color ? 'ring-2 ring-white scale-110' : 'opacity-80 hover:opacity-100'}`}
+                  />
+                ))}
+              </div>
+
+              {/* Compact Mode Button */}
+              <button
+                onClick={() => setCompactMode(!compactMode)}
+                className={`px-2 py-1 rounded transition-colors text-[10px] font-semibold flex items-center gap-1 ${compactMode ? 'bg-green-600 text-white' : 'bg-slate-700 hover:bg-slate-600 text-slate-300'}`}
+                title="Toggle Compact Mode to squeeze layout onto 1 page without calling AI"
+              >
+                📄 Compact {compactMode ? 'ON' : 'OFF'}
+              </button>
+
+              {/* Page Count Estimate Badge */}
+              <span className="px-2 py-1 bg-slate-700 rounded text-slate-300 font-mono text-[10px]" title="Estimated page count">
+                ~{calculatePageEstimate()} {calculatePageEstimate() > 1.1 ? 'Pgs ⚠️' : 'Pg ✅'}
+              </span>
+
+              {/* Zoom Controls */}
+              <div className="flex items-center gap-1">
+                 <button onClick={() => setPreviewScale(Math.max(0.4, previewScale - 0.1))} className="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded">-</button>
+                 <span className="w-7 text-center">{Math.round(previewScale * 100)}%</span>
+                 <button onClick={() => setPreviewScale(Math.min(1.5, previewScale + 0.1))} className="px-2 py-1 bg-slate-700 hover:bg-slate-600 rounded">+</button>
+              </div>
            </div>
         </div>
 
@@ -824,7 +1117,14 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
                   <ResumeSkeleton />
                 </div>
               ) : (
-                <ResumePreview resume={improvedResume || resume} template={activeTemplate} scale={previewScale} isExporting={isExporting} />
+                <ResumePreview 
+                  resume={improvedResume || debouncedResume} 
+                  template={activeTemplate} 
+                  scale={previewScale} 
+                  isExporting={isExporting}
+                  compactMode={compactMode}
+                  accentColor={accentColor}
+                />
               )}
           </div>
           
@@ -844,9 +1144,6 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
           )}
         </div>
       </div>
-
-      {/* AI Tailor Modal */}
-      {/* Removed Tailor Modal */}
 
       {/* History Modal */}
       {showHistoryModal && (
@@ -895,6 +1192,27 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
                 </div>
             </div>
 
+            {/* Compact Mode Option in Export Modal */}
+            <div className="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center justify-between">
+                <div>
+                  <h5 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                    📄 Compact Mode (Fit to 1 Page)
+                  </h5>
+                  <p className="text-xs text-slate-500">
+                    Reduces padding and section spacing to fit content on a single page without needing AI calls.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer ml-4">
+                  <input 
+                    type="checkbox" 
+                    checked={compactMode} 
+                    onChange={(e) => setCompactMode(e.target.checked)} 
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+            </div>
+
             <div className="bg-slate-50 p-4 rounded-lg mb-6 border border-slate-100">
                 <p className="text-xs text-slate-500 leading-relaxed mb-2">
                     <strong>Tip:</strong> For best ATS compatibility, we recommend the <strong>ATS Standard</strong> or <strong>Modern Clean</strong> templates. 
@@ -907,7 +1225,7 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
 
             <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
               <Button variant="ghost" onClick={() => setShowExportModal(false)}>Cancel</Button>
-              <Button onClick={handlePrint} icon={<Download size={18} />}>
+              <Button onClick={handleExportPDF} icon={<Download size={18} />}>
                 Download PDF
               </Button>
             </div>

@@ -38,6 +38,7 @@ const hashString = (str: string): string => {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const p = (str: string) => str.replace(/\n[ \t]+/g, '\n').trim();
 
 const parseJSON = (text: string, fallback: any) => {
   try {
@@ -94,7 +95,7 @@ const callGeminiAPI = async (
     // 4. Persist to cache
     if (useCache && responseText) {
       aiCache.set(cacheKey, responseText);
-      if (aiCache.size > 50) {
+      if (aiCache.size > 100) {
         const firstKey = aiCache.keys().next().value;
         if (firstKey) aiCache.delete(firstKey);
       }
@@ -121,7 +122,7 @@ const callGeminiAPI = async (
 
 export const generateSummary = async (resumeContext: string, jobRole?: string): Promise<string> => {
   try {
-    const prompt = `
+    const prompt = p(`
       You are a senior resume strategist specializing in ATS-optimized summaries for competitive tech roles.
 
       Write a concise, high-impact professional resume summary (3–4 sentences).
@@ -142,7 +143,7 @@ export const generateSummary = async (resumeContext: string, jobRole?: string): 
       8. Do NOT fabricate experiences, metrics, tools, or certifications.
 
       Return ONLY the final summary text.
-    `;
+    `);
 
     const responseText = await callGeminiAPI('generateSummary', {
       model: MODELS.FLASH_LITE,
@@ -159,7 +160,7 @@ export const generateSummary = async (resumeContext: string, jobRole?: string): 
 
 export const improveDescription = async (text: string, type: 'experience' | 'project'): Promise<string> => {
   try {
-    const prompt = `
+    const prompt = p(`
       You are an expert resume writer. Improve the following ${type} description to be more professional, impact-oriented, and ATS-friendly.
       
       Rules:
@@ -173,7 +174,7 @@ export const improveDescription = async (text: string, type: 'experience' | 'pro
       "${text}"
       
       Return ONLY the improved text as bullet points (if applicable) or a paragraph. Do not add conversational filler.
-    `;
+    `);
 
     const responseText = await callGeminiAPI('improveDescription', {
       model: MODELS.FLASH_LITE,
@@ -193,7 +194,7 @@ export const improveDescription = async (text: string, type: 'experience' | 'pro
 
 export const tailorResumeToJob = async (currentResumeJSON: string, jobDescription: string): Promise<string> => {
   try {
-    const prompt = `
+    const prompt = p(`
       You are an expert AI Resume Optimizer dedicated to ATS optimization and truthfulness.
       I will provide a resume in JSON format and a Job Description (JD).
       
@@ -216,7 +217,7 @@ export const tailorResumeToJob = async (currentResumeJSON: string, jobDescriptio
       
       Return the output strictly as a valid JSON object matching the schema of the input resume. 
       Do NOT wrap in markdown code blocks. Just the raw JSON string.
-    `;
+    `);
 
     const responseText = await callGeminiAPI('tailorResumeToJob', {
       model: MODELS.FLASH_LITE,
@@ -236,7 +237,7 @@ export const tailorResumeToJob = async (currentResumeJSON: string, jobDescriptio
 
 export const transformResumeForRole = async (currentResumeJSON: string, targetRole: string, jobDescription?: string): Promise<string> => {
   try {
-    const prompt = `
+    const prompt = p(`
       You are an expert Resume Strategist.
       I have a parsed resume (JSON) and a Target Job Role: "${targetRole}".
       ${jobDescription ? `\nHere is the Job Description / Requirements:\n"""\n${jobDescription}\n"""\n` : ''}
@@ -254,7 +255,7 @@ export const transformResumeForRole = async (currentResumeJSON: string, targetRo
       ${currentResumeJSON}
       
       Return the output strictly as a valid JSON object matching the schema.
-    `;
+    `);
 
     const responseText = await callGeminiAPI('transformResumeForRole', {
       model: MODELS.FLASH_LITE,
@@ -274,7 +275,7 @@ export const transformResumeForRole = async (currentResumeJSON: string, targetRo
 
 export const fitResumeToOnePage = async (currentResumeJSON: string): Promise<string> => {
   try {
-    const prompt = `
+    const prompt = p(`
       You are an expert resume writer and formatter. The following resume is slightly too long and spills over to a second page.
       Your task is to intelligently trim the content to make it fit on a single page.
       
@@ -290,7 +291,7 @@ export const fitResumeToOnePage = async (currentResumeJSON: string): Promise<str
       
       Input Resume JSON:
       ${currentResumeJSON}
-    `;
+    `);
 
     const responseText = await callGeminiAPI('fitResumeToOnePage', {
       model: MODELS.FLASH_LITE,
@@ -307,7 +308,7 @@ export const fitResumeToOnePage = async (currentResumeJSON: string): Promise<str
 
 export const parseResumeContent = async (text: string): Promise<string> => {
   try {
-    const prompt = `
+    const prompt = p(`
       You are an advanced AI Resume Parser specializing in extracting structured data from unstructured resume text.
       Your task is to accurately identify sections (Personal Info, Education, Experience, Projects, Skills, Certifications) and map them to the JSON schema below.
 
@@ -370,7 +371,7 @@ export const parseResumeContent = async (text: string): Promise<string> => {
       5. **Missing Data:** If a field is not found, use an empty string "" or empty array [].
       6. **IDs:** Generate a unique short string ID for every object in arrays.
       7. **Output:** Return **ONLY** the raw JSON object. Do not wrap in markdown code blocks.
-    `;
+    `);
 
     const responseText = await callGeminiAPI('parseResumeContent', {
       model: MODELS.FLASH, // Mid-tier: better parsing accuracy than flash-lite
@@ -387,7 +388,7 @@ export const parseResumeContent = async (text: string): Promise<string> => {
 
 export const generateResumeByRole = async (role: string, level: string, jobDescription?: string): Promise<string> => {
   try {
-    const prompt = `
+    const prompt = p(`
       You are an expert Resume Writer. Generate a realistic, high-quality sample resume for a ${level} ${role}.
       ${jobDescription ? `\nHere is the Job Description to tailor the resume to:\n"""\n${jobDescription}\n"""\nMake sure the generated resume highlights skills and experiences relevant to these requirements.` : ''}
       
@@ -411,7 +412,7 @@ export const generateResumeByRole = async (role: string, level: string, jobDescr
       }
 
       Return ONLY valid JSON.
-    `;
+    `);
 
     const responseText = await callGeminiAPI('generateResumeByRole', {
       model: MODELS.FLASH_LITE,
@@ -473,7 +474,7 @@ export const generateCoverLetter = async (
   jobDescription?: string
 ): Promise<string> => {
   try {
-    const prompt = `
+    const prompt = p(`
       You are an expert career coach and writer. Write a compelling, professional cover letter for a candidate applying for the position of "${jobRole}" at "${companyName}".
 
       Candidate's Resume Details:
@@ -492,7 +493,7 @@ export const generateCoverLetter = async (
       6. Do NOT include placeholders like [Insert Name] unless absolutely necessary; use the provided context.
 
       Return ONLY the body of the cover letter (including salutation and closing), no markdown formatting or explanations.
-    `;
+    `);
 
     const responseText = await callGeminiAPI('generateCoverLetter', {
       model: MODELS.FLASH_LITE,
@@ -501,7 +502,7 @@ export const generateCoverLetter = async (
         thinkingConfig: { thinkingBudget: 0 },
         temperature: 0.8,
       },
-    }, false); // FIX: don't cache — cover letters are personalized per company/role
+    }, true); // Enable caching — user can regenerate if needed
 
     return responseText || "Error generating cover letter. Please try again.";
   } catch (error) {
@@ -512,7 +513,7 @@ export const generateCoverLetter = async (
 
 export const calculateATSScore = async (resumeText: string): Promise<{ score: number; suggestions: string[]; analysis: string }> => {
   try {
-    const prompt = `
+    const prompt = p(`
       You are an expert Applicant Tracking System (ATS) auditor. Analyze the following resume text and provide an ATS score (0-100) and specific suggestions for improvement.
       
       Resume Text:
@@ -535,7 +536,7 @@ export const calculateATSScore = async (resumeText: string): Promise<{ score: nu
       }
       
       Do NOT include markdown formatting.
-    `;
+    `);
 
     const responseText = await callGeminiAPI('calculateATSScore', {
       model: MODELS.FLASH_LITE,
@@ -556,7 +557,7 @@ export const calculateATSScore = async (resumeText: string): Promise<{ score: nu
 // FIX: Renamed from analyzeResumeFormATS → analyzeResumeFromATS (typo fix)
 export const analyzeResumeFromATS = async (resumeText: string): Promise<{ score: number; matched_keywords: string[]; missing_keywords: string[]; weak_sections: string[]; suggestion: string }> => {
   try {
-    const prompt = `You are an ATS expert. Analyze the resume details below and return 
+    const prompt = p(`You are an ATS expert. Analyze the resume details below and return 
 ONLY a JSON response, no extra text:
 {
   "score": <number 0-100>,
@@ -567,7 +568,7 @@ ONLY a JSON response, no extra text:
 }
 
 Candidate Details:
-${resumeText}`;
+${resumeText}`);
 
     const responseText = await callGeminiAPI('analyzeResumeFromATS', {
       model: MODELS.PRO, // FIX: was 'gemini-3.1-pro-preview' (doesn't exist)
@@ -587,7 +588,7 @@ ${resumeText}`;
 
 export const improveResumeWithAI = async (resumeText: string): Promise<any> => {
   try {
-    const prompt = `You are a professional resume writer and ATS optimization expert. 
+    const prompt = p(`You are a professional resume writer and ATS optimization expert. 
 Using ONLY the details provided below, rewrite and restructure this 
 resume content to maximize ATS score. 
 
@@ -620,7 +621,7 @@ STRICT RULES:
 }
 
 Candidate Details:
-${resumeText}`;
+${resumeText}`);
 
     const responseText = await callGeminiAPI('improveResumeWithAI', {
       model: MODELS.PRO, // FIX: was 'gemini-3.1-pro-preview' (doesn't exist)

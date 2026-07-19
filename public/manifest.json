@@ -1,0 +1,21 @@
+{
+  "short_name": "ResumeForge",
+  "name": "ResumeForge - AI Resume Builder & ATS Checker",
+  "icons": [
+    {
+      "src": "https://res.cloudinary.com/da2szyo01/image/upload/v1774116912/ChatGPT_Image_Mar_16_2026_02_48_23_PM_cqqpef_rncrga.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://res.cloudinary.com/da2szyo01/image/upload/v1774116912/ChatGPT_Image_Mar_16_2026_02_48_23_PM_cqqpef_rncrga.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "display": "standalone",
+  "orientation": "portrait"
+}

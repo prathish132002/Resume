@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import Dashboard from './components/Dashboard';
 import Editor from './components/Editor';
-import ResumeImporter from './components/ResumeImporter';
-import RoleGenerator from './components/RoleGenerator';
-import CoverLetterGenerator from './components/CoverLetterGenerator';
-import ATSScoreChecker from './components/ATSScoreChecker';
 import Login from './components/Login';
-import UserProfileView from './components/UserProfile';
-import AdminDashboard from './components/AdminDashboard';
 import { Resume, AppView } from './types';
 import { INITIAL_RESUME, SAMPLE_RESUME } from './constants';
 import { firebaseService } from './services/firebaseService';
 import { useAuth } from './hooks/useAuth';
+
+// Lazy loaded views for optimized initial load bundle size
+const ResumeImporter = lazy(() => import('./components/ResumeImporter'));
+const RoleGenerator = lazy(() => import('./components/RoleGenerator'));
+const CoverLetterGenerator = lazy(() => import('./components/CoverLetterGenerator'));
+const ATSScoreChecker = lazy(() => import('./components/ATSScoreChecker'));
+const UserProfileView = lazy(() => import('./components/UserProfile'));
+const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 
 const App: React.FC = () => {
   const { user, loading } = useAuth();
@@ -93,70 +95,76 @@ const App: React.FC = () => {
 
   return (
     <div className="font-sans text-slate-900">
-      {currentView === AppView.LOGIN && (
-        <Login onLogin={handleLoginSuccess} />
-      )}
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      }>
+        {currentView === AppView.LOGIN && (
+          <Login onLogin={handleLoginSuccess} />
+        )}
 
-      {currentView === AppView.DASHBOARD && (
-        <Dashboard 
-          isAdmin={isAdmin}
-          onCreateNew={handleCreateNew} 
-          onLoadSample={handleLoadSample}
-          onImport={handleImport}
-          onGenerate={handleRoleGenerate}
-          onCoverLetter={handleCoverLetter}
-          onATSScore={handleATSScore}
-          onAdminDashboard={() => setCurrentView(AppView.ADMIN_DASHBOARD)}
-          onEditResume={(r) => {
-            setResume(r);
-            setCurrentView(AppView.EDITOR);
-          }}
-          onOpenProfile={() => setCurrentView(AppView.PROFILE)}
-          onLogout={handleLogout}
-        />
-      )}
-      
-      {currentView === AppView.PROFILE && (
-        <UserProfileView onBack={handleBackToDashboard} />
-      )}
-      
-      {currentView === AppView.ADMIN_DASHBOARD && (
-        <AdminDashboard onBack={handleBackToDashboard} />
-      )}
-      
-      {currentView === AppView.IMPORT && (
-        <ResumeImporter 
-          onImport={handleResumeLoaded}
-          onBack={handleBackToDashboard}
-        />
-      )}
-
-      {currentView === AppView.ROLE_GENERATOR && (
-        <RoleGenerator 
-          onGenerate={handleResumeLoaded}
-          onBack={handleBackToDashboard}
-        />
-      )}
-
-      {currentView === AppView.COVER_LETTER && (
-        <CoverLetterGenerator
-            resume={resume}
+        {currentView === AppView.DASHBOARD && (
+          <Dashboard 
+            isAdmin={isAdmin}
+            onCreateNew={handleCreateNew} 
+            onLoadSample={handleLoadSample}
+            onImport={handleImport}
+            onGenerate={handleRoleGenerate}
+            onCoverLetter={handleCoverLetter}
+            onATSScore={handleATSScore}
+            onAdminDashboard={() => setCurrentView(AppView.ADMIN_DASHBOARD)}
+            onEditResume={(r) => {
+              setResume(r);
+              setCurrentView(AppView.EDITOR);
+            }}
+            onOpenProfile={() => setCurrentView(AppView.PROFILE)}
+            onLogout={handleLogout}
+          />
+        )}
+        
+        {currentView === AppView.PROFILE && (
+          <UserProfileView onBack={handleBackToDashboard} />
+        )}
+        
+        {currentView === AppView.ADMIN_DASHBOARD && (
+          <AdminDashboard onBack={handleBackToDashboard} />
+        )}
+        
+        {currentView === AppView.IMPORT && (
+          <ResumeImporter 
+            onImport={handleResumeLoaded}
             onBack={handleBackToDashboard}
-        />
-      )}
+          />
+        )}
 
-      {currentView === AppView.ATS_SCORE && (
-        <ATSScoreChecker onBack={handleBackToDashboard} />
-      )}
-      
-      {currentView === AppView.EDITOR && (
-        <Editor 
-          emailVerified={user?.emailVerified ?? true}
-          resume={resume} 
-          setResume={setResume} 
-          onBack={handleBackToDashboard} 
-        />
-      )}
+        {currentView === AppView.ROLE_GENERATOR && (
+          <RoleGenerator 
+            onGenerate={handleResumeLoaded}
+            onBack={handleBackToDashboard}
+          />
+        )}
+
+        {currentView === AppView.COVER_LETTER && (
+          <CoverLetterGenerator
+              resume={resume}
+              onBack={handleBackToDashboard}
+          />
+        )}
+
+        {currentView === AppView.ATS_SCORE && (
+          <ATSScoreChecker onBack={handleBackToDashboard} />
+        )}
+        
+        {currentView === AppView.EDITOR && (
+          <Editor 
+            emailVerified={user?.emailVerified ?? true}
+            resume={resume} 
+            setResume={setResume} 
+            onBack={handleBackToDashboard} 
+          />
+        )}
+      </Suspense>
     </div>
   );
 };

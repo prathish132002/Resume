@@ -334,9 +334,9 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
 
       {/* Export Options Modal */}
       {showExportModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 print:hidden">
-          <div className="bg-white rounded-xl w-full max-w-2xl p-6 shadow-2xl">
-            <div className="flex justify-between items-center mb-6">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 md:p-4 print:hidden overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-w-2xl p-5 md:p-6 shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100 shrink-0">
                 <div className="flex items-center gap-2">
                     <Printer className="text-slate-700" size={24} />
                     <h3 className="text-xl font-bold text-slate-800">Export Options</h3>
@@ -346,11 +346,11 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
                 </button>
             </div>
             
-            <div className="mb-6">
+            <div className="overflow-y-auto flex-1 pr-1 space-y-4">
                 <h4 className="font-semibold text-slate-700 mb-3 text-sm flex items-center gap-2">
                     <Layout size={16}/> Select Template
                 </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                     {TEMPLATES.map(t => (
                         <button
                             key={t.id}
@@ -361,8 +361,8 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
                                 : 'border-slate-200 hover:border-slate-300'
                             }`}
                         >
-                            <div className={`w-full h-20 mb-2 rounded ${t.color} opacity-80 shadow-sm`}></div>
-                            <span className={`text-sm font-medium ${activeTemplate === t.id ? 'text-blue-700' : 'text-slate-600'}`}>
+                            <div className={`w-full h-16 md:h-20 mb-2 rounded ${t.color} opacity-80 shadow-sm`}></div>
+                            <span className={`text-xs md:text-sm font-medium ${activeTemplate === t.id ? 'text-blue-700' : 'text-slate-600'}`}>
                                 {t.name}
                             </span>
                         </button>
@@ -370,7 +370,7 @@ const CoverLetterGenerator: React.FC<CoverLetterGeneratorProps> = ({ resume, onB
                 </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+            <div className="flex justify-end gap-3 pt-3 mt-4 border-t border-slate-100 shrink-0">
               <Button variant="ghost" onClick={() => setShowExportModal(false)}>Cancel</Button>
               <Button onClick={handlePrint} icon={<Download size={18} />}>
                 Print / Save as PDF

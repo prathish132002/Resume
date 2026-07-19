@@ -1156,9 +1156,9 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
 
       {/* Export Options Modal */}
       {showExportModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-2xl p-6 shadow-2xl">
-            <div className="flex justify-between items-center mb-6">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 md:p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-w-2xl p-5 md:p-6 shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100 shrink-0">
                 <div className="flex items-center gap-2">
                     <FileText className="text-slate-700" size={24} />
                     <h3 className="text-xl font-bold text-slate-800">Export PDF Options</h3>
@@ -1168,62 +1168,64 @@ const Editor: React.FC<EditorProps> = ({ emailVerified, resume, setResume, onBac
                 </button>
             </div>
             
-            <div className="mb-4">
-                <h4 className="font-semibold text-slate-700 mb-3 text-sm flex items-center gap-2">
-                    <Layout size={16}/> Select Template
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {TEMPLATES.map(t => (
-                        <button
-                            key={t.id}
-                            onClick={() => setActiveTemplate(t.id as TemplateType)}
-                            className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all ${
-                                activeTemplate === t.id 
-                                ? 'border-blue-600 bg-blue-50' 
-                                : 'border-slate-200 hover:border-slate-300'
-                            }`}
-                        >
-                            <div className={`w-full h-20 mb-2 rounded ${t.color} opacity-80 shadow-sm`}></div>
-                            <span className={`text-sm font-medium ${activeTemplate === t.id ? 'text-blue-700' : 'text-slate-600'}`}>
-                                {t.name}
-                            </span>
-                        </button>
-                    ))}
-                </div>
-            </div>
+            <div className="overflow-y-auto flex-1 pr-1 space-y-4">
+              <div>
+                  <h4 className="font-semibold text-slate-700 mb-3 text-sm flex items-center gap-2">
+                      <Layout size={16}/> Select Template
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+                      {TEMPLATES.map(t => (
+                          <button
+                              key={t.id}
+                              onClick={() => setActiveTemplate(t.id as TemplateType)}
+                              className={`flex flex-col items-center p-3 rounded-lg border-2 transition-all ${
+                                  activeTemplate === t.id 
+                                  ? 'border-blue-600 bg-blue-50' 
+                                  : 'border-slate-200 hover:border-slate-300'
+                              }`}
+                          >
+                              <div className={`w-full h-16 md:h-20 mb-2 rounded ${t.color} opacity-80 shadow-sm`}></div>
+                              <span className={`text-xs md:text-sm font-medium ${activeTemplate === t.id ? 'text-blue-700' : 'text-slate-600'}`}>
+                                  {t.name}
+                              </span>
+                          </button>
+                      ))}
+                  </div>
+              </div>
 
-            {/* Compact Mode Option in Export Modal */}
-            <div className="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center justify-between">
-                <div>
-                  <h5 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-                    📄 Compact Mode (Fit to 1 Page)
-                  </h5>
-                  <p className="text-xs text-slate-500">
-                    Reduces padding and section spacing to fit content on a single page without needing AI calls.
+              {/* Compact Mode Option in Export Modal */}
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center justify-between">
+                  <div>
+                    <h5 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
+                      📄 Compact Mode (Fit to 1 Page)
+                    </h5>
+                    <p className="text-xs text-slate-500">
+                      Reduces padding and section spacing to fit content on a single page without needing AI calls.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer ml-4 shrink-0">
+                    <input 
+                      type="checkbox" 
+                      checked={compactMode} 
+                      onChange={(e) => setCompactMode(e.target.checked)} 
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                  <p className="text-xs text-slate-500 leading-relaxed mb-2">
+                      <strong>Tip:</strong> For best ATS compatibility, we recommend the <strong>ATS Standard</strong> or <strong>Modern Clean</strong> templates. 
+                      Ensure "Background graphics" is enabled in your print settings if using Modern/Executive templates.
                   </p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer ml-4">
-                  <input 
-                    type="checkbox" 
-                    checked={compactMode} 
-                    onChange={(e) => setCompactMode(e.target.checked)} 
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                </label>
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                      <strong>Mobile/Tablet Users:</strong> When the print dialog opens, look for the <strong>"Save as PDF"</strong> option in the destination dropdown. If you don't see it, tap the <strong>three dots</strong> in the top right corner and select <strong>"Save as PDF"</strong> to download your file.
+                  </p>
+              </div>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-lg mb-6 border border-slate-100">
-                <p className="text-xs text-slate-500 leading-relaxed mb-2">
-                    <strong>Tip:</strong> For best ATS compatibility, we recommend the <strong>ATS Standard</strong> or <strong>Modern Clean</strong> templates. 
-                    Ensure "Background graphics" is enabled in your print settings if using Modern/Executive templates.
-                </p>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                    <strong>Mobile/Tablet Users:</strong> When the print dialog opens, look for the <strong>"Save as PDF"</strong> option in the destination dropdown. If you don't see it, tap the <strong>three dots</strong> in the top right corner and select <strong>"Save as PDF"</strong> to download your file.
-                </p>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
+            <div className="flex justify-end gap-3 pt-3 mt-4 border-t border-slate-100 shrink-0">
               <Button variant="ghost" onClick={() => setShowExportModal(false)}>Cancel</Button>
               <Button onClick={handleExportPDF} icon={<Download size={18} />}>
                 Download PDF
